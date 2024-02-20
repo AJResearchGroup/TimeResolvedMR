@@ -10,6 +10,8 @@ LazyData: true
 Imports: 
     sandwich,
     timereg
+Depends:
+    R (>=4.1.0)
 Authors@R: c(
     person("Daniel", "Schmitz", , "daniel.schmitz@igp.uu.se", role = "cre"),
     person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "cre")

@@ -15,4 +15,5 @@
 source("step1.R")
 source("step2.R")
 source("step3.R")
+source("step4.R")
 source("step5.R")

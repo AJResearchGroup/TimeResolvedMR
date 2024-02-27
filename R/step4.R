@@ -27,12 +27,6 @@ library(sandwich)
 library(timereg)
 
 
-q.aalen      <- TRUE    # Aalen's additive hazard model
-q.merged.pgs <-
-  TRUE    # q.merged.pgs = TRUE -> estimate effect on outcome of merged PGS; q.merged.pgs = FALSE -> estimate effect of PGS in each subsample, separately
-w.outtype    <-
-  "bin"   # w.outtype = "bin" (binary) -> disease; w.outtype = "cnt" (continuous) -> continuous response
-
 # first of all, rename data-frames (NOTE: disease specific, change for different outcomes):
 pgs      <-
   pgs.dm           # PGS <--- NOTE: disease-specific, please change!!!
@@ -310,7 +304,6 @@ library(sandwich)
 library(timereg)
 
 
-q.aalen      <- TRUE    # Aalen's additive hazard model
 q.merged.pgs <-
   TRUE    # q.merged.pgs = TRUE -> estimate effect on outcome of merged PGS; q.merged.pgs = FALSE -> estimate effect of PGS in each subsample, separately
 w.outtype    <-
@@ -343,8 +336,6 @@ set.dth <- c(1:32)
 set.dis <-
   set.t2d             # <--- define outcome, please change!!!
 
-if (q.aalen)
-{
   if (q.merged.pgs)
   {
     age.seq          <- seq(age.start, age.stop, age.step)
@@ -542,9 +533,6 @@ if (q.aalen)
     p.out <- 0
 
   }
-}
-
-date()
 
 save(
   age.seq,

@@ -7,81 +7,47 @@ load(
   verbose = TRUE
 )
 
+# [,1]: PGS effect, [,2]: Interaction effect
 coef.exp.lin          <- as.numeric(coef.exp.lin)
 coef.exp.qdr          <- as.numeric(coef.exp.qdr)
 
-coef.exp.lin
-coef.exp.qdr
-
+pgs <- "pgs"
 
 bcum.raw <-
-  cbind(p.out$cum[, c(1, 3)], p.out$var.cum[, 3])   # time, B(t) and Var(B(t))
+  cbind(p.out$cum[, c("time", pgs)], p.out$var.cum[, pgs])   # time, B(t) and Var(B(t))
 colnames(bcum.raw) <- c("time", "pgs", "pgs.var")
 
 # interpolate B(t) and Var(B(t)) for non-existing t (ages), i.e., times with no events:
-w.last <- 1
-bcum <- {
-}
-for (j in 1:length(age.seq))
-{
-  w.tmp <- which(trunc(bcum.raw[, 1]) == age.seq[j])
-  n.tmp <- length(w.tmp)
-
-  if (n.tmp > 0)
-  {
-    bcum <- rbind(bcum, bcum.raw[w.tmp, ])
-    w.last <- w.tmp[length(w.tmp)]
-  } else
-  {
-    insert.tmp <- c(age.seq[j], as.numeric(bcum.raw[w.last, c(2, 3)]))
-    bcum <- rbind(bcum, insert.tmp)
-  }
-}
-# for (j in 1:nrow(bcum$cum))   # if bcum$cum[,3] = NA, then assume that beta (=dB/dt) is zero and interpolate to the next non-NA time-point
-# {
-#     if (is.na(bcum$cum[j,3])) bcum$cum[j,3] <- bcum$cum[j-1,3]
-# }
-
+pgs_interpolated <- approx(x = floor(bcum.raw[, "time"]), y = bcum.raw[, "pgs"],
+                           xout = age.seq, method = "constant", rule = 2)$y
+pgs.var_interpolated <- approx(x = floor(bcum.raw[, "time"]), y = bcum.raw[, "pgs.var"],
+                               xout = age.seq, method = "constant", rule = 2)$y
+bcum <- c(age.seq, pgs_interpolated, pgs.var_interpolated) |>
+  matrix(ncol = 3, dimnames = list(NULL, colnames(bcum.raw)))
 
 # calculate b(t) = dB/dt and corresponding standard errors:
-dt       <-
-  1.0   # for now, suppose that dt = 1 (this should be implemented in the future to allow for non-unitary dt)
-beta     <-
-  matrix(rep(0, length(age.seq) * 5), length(age.seq), 5)   # dB/dt
-beta[, 1] <- age.seq
-for (j in 2:length(age.seq))
-{
-  w.Bt1 <-
-    max(which(trunc(bcum[, 1]) == age.seq[j]))     # identify maximum time-point for age = j
-  w.Bt0 <-
-    max(which(trunc(bcum[, 1]) == age.seq[j - 1]))   # identify maximum time-point for age = j-1
-
-  beta[j, 2] <-
-    bcum[w.Bt1, 2] - bcum[w.Bt0, 2]         # beta(t)dt = B(t) - B(t-), suppose that dt = 1
-  beta[j, 3] <-
-    bcum[w.Bt1, 3] - bcum[w.Bt0, 3]         # variance of beta(t); it appears that var.cum is more stable than robvar.cum...?
-  #    beta[j,3] <- bcum$robvar.cum[w.Bt1,3] - bcum$robvar.cum[w.Bt0,3]   # variance of beta(t); robvar.cum (less stable)
-  beta[j, 4] <- beta[j, 2] - 1.96 * sqrt(beta[j, 3])   # 95% lower CI
-  beta[j, 5] <- beta[j, 2] + 1.96 * sqrt(beta[j, 3])   # 95% upper CI
-}
+# Numeric differentiation, dx = diff(x) in this case
+dPGS <- c(0, diff(bcum[, "pgs"]) / diff(bcum[, "time"]))
+dPGS.var <- c(0, diff(bcum[, "pgs.var"]) / diff(bcum[, "time"]))
+dPGS.low <- dPGS - 1.96 * sqrt(dPGS.var)
+dPGS.high <- dPGS + 1.96 * sqrt(dPGS.var)
+beta <- c(age.seq, dPGS, dPGS.var, dPGS.low, dPGS.high) |>
+  matrix(ncol = 5, dimnames = list(NULL, c("time", "beta", "var", "l95", "h95")))
 
 # calcualte central difference (midpoint) to estimate dbdt and gamma(t) = dbdt/beta_G(t), then use trapezoidal rule for integration to obtain the MR estimate Gamma(t):
 dbdt <- matrix(rep(0, (length(age.seq) - 1) * 2), (length(age.seq) - 1), 2)
 gmat <- matrix(rep(0, (length(age.seq) - 1) * 4), (length(age.seq) - 1), 4)
 
-dbdt[, 1] <-
-  age.seq[2:length(age.seq)] - 0.5   # midpoint time t = k - 1/2, db/dt(t) is estimated in the interior of [0,age_max]
-gmat[, 1] <-
-  dbdt[, 1]                           # midpoint time t = k - 1/2, gamma(t) is estimated in the interior of [0,age_max]
+gmat[, 1] <- dbdt[, 1] <- zoo::rollmean(age.seq, 2)
 
-dbdt[, 2] <-
-  beta[2:length(age.seq), 2] - beta[1:(length(age.seq) - 1), 2]   # numerical derivative (central difference), calculated in midpoint t = k - 1/2
+dbdt[, 2] <- diff(beta[, "beta"])    # numerical derivative (central difference), calculated in midpoint t = k - 1/2
 
-gmat[, 2] <-
-  dbdt[, 2] / (coef.exp.lin[1] + coef.exp.lin[2] * gmat[, 1])   # time-resolved wald ratio at midpoint t = k - 1/2; linear time-dependence
-gmat[, 3] <-
-  dbdt[, 2] / (coef.exp.qdr[1] + coef.exp.qdr[2] * gmat[, 1] + coef.exp.qdr[3] *
-                 gmat[, 1] ^ 4)   # quartic time-dependence
+gmat[, 2] <- dbdt[, 2] /
+  (coef.exp.lin["pgs"] + coef.exp.lin["pgs:age_at_assessment"] * gmat[, 1])   # time-resolved wald ratio at midpoint t = k - 1/2; linear time-dependence
+gmat[, 3] <- dbdt[, 2] / (
+  coef.exp.qdr["pgs"] + coef.exp.qdr["pgs:age_at_assessment"] * gmat[, 1] +
+  coef.exp.qdr["pgs:I(age_at_assessment^4)"] * gmat[, 1] ^ 4   # quartic time-dependence
+)
 
 loess.f  <- predict(loess.m, gmat[, 1], se = TRUE)
 
@@ -95,164 +61,81 @@ gmat[, 4] <-
 q.trap <-
   FALSE   # q.trap = TRUE -> trapezoidal rule, q.trap = FALSE -> midpoint rule (Riemann sum)
 
-Glin <- matrix(rep(0, length(age.seq) * 5), length(age.seq), 5)
-Gqdr <- matrix(rep(0, length(age.seq) * 5), length(age.seq), 5)
-Gloe <- matrix(rep(0, length(age.seq) * 5), length(age.seq), 5)
-
-if (q.trap) {
-  Glin <- pracma::trapz(gmat[,1], gmat[,2])
-  Gqdr <- pracma::trapz(gmat[,1], gmat[,3])
-  Gloe <- pracma::trapz(gmat[,1], gmat[,4])
-} else
-  # midpoint rule
-{
-  Glin[, 1] <- age.seq
-  Gqdr[, 1] <- age.seq
-  Gloe[, 1] <- age.seq
-
-  Glin[1, 2] <-
-    0                                                               # integral at t=0 is zero
-  Glin[2:nrow(Glin), 2] <-
-    cumsum(gmat[, 2])                                     # approximation of integral using the midpoint rule
-  Gqdr[1, 2] <-
-    0                                                               # integral at t=0 is zero
-  Gqdr[2:nrow(Gqdr), 2] <-
-    cumsum(gmat[, 3])                                     # approximation of integral using the midpoint rule
-  Gloe[1, 2] <-
-    0                                                               # integral at t=0 is zero
-  Gloe[2:nrow(Gloe), 2] <-
-    cumsum(gmat[, 4])                                     # approximation of integral using the midpoint rule
+integrate_estimates <- function(age, beta, q.trap = TRUE){
+  stopifnot(
+    is.numeric(age),
+    is.numeric(beta),
+    is.logical(q.trap)
+  )
+  effects <- if (q.trap) pracma::cumtrapz(age, beta)
+    else c(0, cumsum(diff(age) * zoo::rollmean(beta, 2)))
+  c(age, effects) |> matrix(ncol = 2, dimnames = list(NULL, c("age", "effect")))
 }
 
+Glin <- integrate_estimates(gmat[,1], gmat[,2], q.trap)
+Gqdr <- integrate_estimates(gmat[,1], gmat[,3], q.trap)
+Gloe <- integrate_estimates(gmat[,1], gmat[,4], q.trap)
 
-
-# finally, calculate 95% CIs, corresponding to each effect estimate Gamma(t) using the expression for Var(Gamma(t)):
-Glin[1, 3] <- 0
-Glin[1, 4] <- 0
-Glin[1, 5] <- 0
-Gqdr[1, 3] <- 0
-Gqdr[1, 4] <- 0
-Gqdr[1, 5] <- 0
-Gloe[1, 3] <- 0
-Gloe[1, 4] <- 0
-Gloe[1, 5] <- 0
-Gprx <- Gqdr
 loess.f   <- predict(loess.m, beta[, 1], se = TRUE)
 
-if (q.trap)
-  # 95% CIs using the variance for the trapezoiudal-rule integration (-> correlated errors)
-{
-  for (j in 2:nrow(Glin))
-  {
-    if (j == 2)
-      # derived MR variance:
-    {
-      Glin[j, 3] <-
-        beta[2, 3] / (coef.exp.lin[1] + coef.exp.lin[2] * beta[2, 1]) ^ 2 / 16        # NOTE: variance in Gamma(k-1/2) is estimated from Var[Eta(k)]/beta_G(k)^2/16
-      Gqdr[j, 3] <-
-        beta[2, 3] / (coef.exp.qdr[1] + coef.exp.qdr[2] * beta[2, 1] + coef.exp.qdr[3] *
-                        beta[2, 1] ^ 4) ^ 2 / 16
-      Gloe[j, 3] <- beta[2, 3] / (loess.f$fit[2]) ^ 2 / 16
+total_effect_linear <- get_total_genetic_effect(betas = coef.exp.lin["pgs:age_at_assessment"], exponents = 1, fixed_effect = coef.exp.lin["pgs"])
+total_effect_qdr <- get_total_genetic_effect(betas = coef.exp.lin[c("pgs:age_at_assessment","pgs:I(age_at_assessment^4)")], exponents = c(1,4), fixed_effect = coef.exp.lin["pgs"])
+total_effect_loess <- loess.f$fit
 
-      Glin[j, 4] <- Glin[j, 2] - 1.96 * sqrt(Glin[j, 3])
-      Glin[j, 5] <- Glin[j, 2] + 1.96 * sqrt(Glin[j, 3])
-
-      Gqdr[j, 4] <- Gqdr[j, 2] - 1.96 * sqrt(Gqdr[j, 3])
-      Gqdr[j, 5] <- Gqdr[j, 2] + 1.96 * sqrt(Gqdr[j, 3])
-
-      Gloe[j, 4] <- Gloe[j, 2] - 1.96 * sqrt(Gloe[j, 3])
-      Gloe[j, 5] <- Gloe[j, 2] + 1.96 * sqrt(Gloe[j, 3])
-
-      Gvar <-
-        beta[j, 3] / (2 * (
-          coef.exp.qdr[1] + coef.exp.qdr[2] * beta[j, 1] + coef.exp.qdr[3] * beta[j, 1] ^
-            4
-        ) ^ 2)
-      Gprx[j, 3] <- Gvar
-      Gprx[j, 4] <- Gprx[j, 2] - 1.96 * sqrt(Gvar)
-      Gprx[j, 5] <- Gprx[j, 2] + 1.96 * sqrt(Gvar)
-    } else if (j == 3)
-    {
-      Glin[j, 3] <-
-        Glin[2, 3] + beta[3, 3] / (coef.exp.lin[1] + coef.exp.lin[2] * beta[3, 1]) ^
-        2 / 4
-      Gqdr[j, 3] <-
-        Gqdr[2, 3] + beta[3, 3] / (coef.exp.qdr[1] + coef.exp.qdr[2] * beta[3, 1] + coef.exp.qdr[3] *
-                                     beta[3, 1] ^ 4) ^ 2 / 4
-      Gloe[j, 3] <- Gloe[2, 3] + beta[3, 3] / (loess.f$fit[3]) ^ 2 / 4
-
-      Glin[j, 4] <- Glin[j, 2] - 1.96 * sqrt(Glin[j, 3])
-      Glin[j, 5] <- Glin[j, 2] + 1.96 * sqrt(Glin[j, 3])
-
-      Gqdr[j, 4] <- Gqdr[j, 2] - 1.96 * sqrt(Gqdr[j, 3])
-      Gqdr[j, 5] <- Gqdr[j, 2] + 1.96 * sqrt(Gqdr[j, 3])
-
-      Gloe[j, 4] <- Gloe[j, 2] - 1.96 * sqrt(Gloe[j, 3])
-      Gloe[j, 5] <- Gloe[j, 2] + 1.96 * sqrt(Gloe[j, 3])
-
-      Gvar <-
-        beta[j, 3] / (2 * (
-          coef.exp.qdr[1] + coef.exp.qdr[2] * beta[j, 1] + coef.exp.qdr[3] * beta[j, 1] ^
-            4
-        ) ^ 2)
-      Gprx[j, 3] <- Gvar
-      Gprx[j, 4] <- Gprx[j, 2] - 1.96 * sqrt(Gvar)
-      Gprx[j, 5] <- Gprx[j, 2] + 1.96 * sqrt(Gvar)
-    } else
-    {
-      Glin[j, 3] <-
-        Glin[2, 3] + beta[j - 1, 3] / (coef.exp.lin[1] + coef.exp.lin[2] * beta[j -
-                                                                                  1, 1]) ^ 2 / 4 + beta[j, 3] / (coef.exp.lin[1] + coef.exp.lin[2] * beta[j, 1]) ^
-        2 / 4
-      Gqdr[j, 3] <-
-        Gqdr[2, 3] + beta[j - 1, 3] / (coef.exp.qdr[1] + coef.exp.qdr[2] * beta[j -
-                                                                                  1, 1] + coef.exp.qdr[3] * beta[j - 1, 1] ^ 4) ^ 2 / 4 + beta[j, 3] / (coef.exp.qdr[1] + coef.exp.qdr[2] *
-                                                                                                                                                          beta[j, 1] + coef.exp.qdr[3] * beta[j, 1] ^ 4) ^ 2 / 4
-      Gloe[j, 3] <-
-        Gloe[2, 3] + beta[j - 1, 3] / (loess.f$fit[j - 1]) ^ 2 / 4 + beta[j, 3] /
-        (loess.f$fit[j]) ^ 2 / 4
-
-      Glin[j, 4] <- Glin[j, 2] - 1.96 * sqrt(Glin[j, 3])
-      Glin[j, 5] <- Glin[j, 2] + 1.96 * sqrt(Glin[j, 3])
-
-      Gqdr[j, 4] <- Gqdr[j, 2] - 1.96 * sqrt(Gqdr[j, 3])
-      Gqdr[j, 5] <- Gqdr[j, 2] + 1.96 * sqrt(Gqdr[j, 3])
-
-      Gloe[j, 4] <- Gloe[j, 2] - 1.96 * sqrt(Gloe[j, 3])
-      Gloe[j, 5] <- Gloe[j, 2] + 1.96 * sqrt(Gloe[j, 3])
-
-      Gvar <-
-        beta[j, 3] / (2 * (
-          coef.exp.qdr[1] + coef.exp.qdr[2] * beta[j, 1] + coef.exp.qdr[3] * beta[j, 1] ^
-            4
-        ) ^ 2)
-      Gprx[j, 3] <- Gvar
-      Gprx[j, 4] <- Gprx[j, 2] - 1.96 * sqrt(Gvar)
-      Gprx[j, 5] <- Gprx[j, 2] + 1.96 * sqrt(Gvar)
-    }
-  }
-} else
+if (q.trap) {
+  Glin[, 3] <- calculate_mr_variance_trapz(effect = total_effect_linear, variance = beta[, "var"])
+  Gqdr[, 3] <- calculate_mr_variance_trapz(effect = total_effect_qdr, variance = beta[, "var"])
+  Gloe[, 3] <- calculate_mr_variance_trapz(effect = total_effect_loess, variance = beta[, "var"])
+} else {
   # 95% CIs using the variance for the midpoint rule (-> uncorrelated errors; wider CIs than for the trapezoidal rule)
-{
-  for (j in 2:nrow(Glin))
-  {
-    # these variances must be verified!!!
-    Glin[j, 3] <-
-      beta[j, 3] / (coef.exp.lin[1] + coef.exp.lin[2] * beta[j, 1]) ^ 2
-    Gqdr[j, 3] <-
-      beta[j, 3] / (coef.exp.qdr[1] + coef.exp.qdr[2] * beta[j, 1] + coef.exp.qdr[3] *
-                      beta[j, 1] ^ 4) ^ 2
-    Gloe[j, 3] <- beta[j, 3] / (loess.f$fit[j]) ^ 2
+  Glin[, 3] <- beta[, "var"] / total_effect_linear ^ 2
+  Gqdr[, 3] <- beta[, "var"] / total_effect_qdr ^ 2
+  Gloe[, 3] <- beta[, "var"] / total_effect_loess ^ 2
+}
+Glin[, 4] <- Glin[, 2] - 1.96 * sqrt(Glin[, 3])
+Glin[, 5] <- Glin[, 2] + 1.96 * sqrt(Glin[, 3])
 
-    Glin[j, 4] <- Glin[j, 2] - 1.96 * sqrt(Glin[j, 3])
-    Glin[j, 5] <- Glin[j, 2] + 1.96 * sqrt(Glin[j, 3])
+Gqdr[, 4] <- Gqdr[, 2] - 1.96 * sqrt(Gqdr[, 3])
+Gqdr[, 5] <- Gqdr[, 2] + 1.96 * sqrt(Gqdr[, 3])
 
-    Gqdr[j, 4] <- Gqdr[j, 2] - 1.96 * sqrt(Gqdr[j, 3])
-    Gqdr[j, 5] <- Gqdr[j, 2] + 1.96 * sqrt(Gqdr[j, 3])
+Gloe[, 4] <- Gloe[, 2] - 1.96 * sqrt(Gloe[, 3])
+Gloe[, 5] <- Gloe[, 2] + 1.96 * sqrt(Gloe[, 3])
 
-    Gloe[j, 4] <- Gloe[j, 2] - 1.96 * sqrt(Gloe[j, 3])
-    Gloe[j, 5] <- Gloe[j, 2] + 1.96 * sqrt(Gloe[j, 3])
-  }
+calculate_mr_variance_trapz <- function(effect, variance) {
+  stopifnot(
+    is.numeric(effect),
+    is.numeric(variance),
+    length(effect) == length(variance),
+    length(effect) > 0
+  )
+  n <- length(effect)
+  var1 <- variance[1] / (16 * effect[1] ^ 2)
+  if (n < 2) return(var1)
+
+  var2 <- var1 + variance[2] / (4 * effect[2] ^ 2)
+  if (n < 3) return (c(var1,var2))
+
+  # At this point, we know that n > 2, so the following is safe:
+  point_variances <- c(
+    var1,
+    vapply(2:n, \(k){ variance[k] / (4 * effect[k] ^2) }, numeric(1))
+  )
+
+  c(
+    var1,
+    var2,
+    vapply(3:n, \(k) { var1 + point_variances[k-1] + point_variances[k] }, numeric(1))
+  )
+}
+
+get_total_genetic_effect <- function(ages, betas, exponents, fixed_effect) {
+  stopifnot(
+    length(betas) == length(exponents),
+    length(betas) > 0, length(exponents) > 0, length(ages) > 0
+  )
+  vapply(ages, \(age) {
+    sum(betas * age ^ exponents) + fixed_effect
+  }, numeric(1))
 }
 
 # beta <- beta

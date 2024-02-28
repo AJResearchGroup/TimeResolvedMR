@@ -79,7 +79,7 @@ calculate_genetic_effects <- function(
 #' @examples
 get_time_dependent_effects <- function(data, pgs = "pgs", exposure = "exposure",
                                        exposure_age = "exposure_age",
-                                       covariates = setdiff(colnames(data), c(exposure, outcome, outcome_age, exposure_age)),
+                                       covariates = setdiff(colnames(data), c(exposure, outcome, exposure_age)),
                                        exponents = 1) {
   # Include PGS, PGS-Age interaction with arbitrary exponents and all covariates
   # Exponent = NULL is equivalent to no age interaction. This is on purpose

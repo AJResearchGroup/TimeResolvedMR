@@ -44,7 +44,9 @@ calculate_genetic_effects <- function(
     exposure_age = exposure_age, age_range = age_range,
     age_step = age_step
   )
-  outcome_model <- regress_outcome(data = data_clean, pgs = pgs, covariates = covariates)
+  outcome_model <- regress_outcome(data = data_clean, pgs = pgs,
+                                   outcome = outcome, outcome_age = outcome_age,
+                                   covariates = covariates)
 
   list(
     timedep = time_dependent_coefficients,

@@ -34,32 +34,11 @@ dPGS.high <- dPGS + 1.96 * sqrt(dPGS.var)
 beta <- c(age.seq, dPGS, dPGS.var, dPGS.low, dPGS.high) |>
   matrix(ncol = 5, dimnames = list(NULL, c("time", "beta", "var", "l95", "h95")))
 
-# calcualte central difference (midpoint) to estimate dbdt and gamma(t) = dbdt/beta_G(t), then use trapezoidal rule for integration to obtain the MR estimate Gamma(t):
-dbdt <- matrix(rep(0, (length(age.seq) - 1) * 2), (length(age.seq) - 1), 2)
-gmat <- matrix(rep(0, (length(age.seq) - 1) * 4), (length(age.seq) - 1), 4)
+dBeta <- diff(beta[, "beta"]) / diff(beta[,"time"])    # numerical derivative (central difference), calculated in midpoint t = k - 1/2
 
-gmat[, 1] <- dbdt[, 1] <- zoo::rollmean(age.seq, 2)
-
-dbdt[, 2] <- diff(beta[, "beta"])    # numerical derivative (central difference), calculated in midpoint t = k - 1/2
-
-gmat[, 2] <- dbdt[, 2] /
-  (coef.exp.lin["pgs"] + coef.exp.lin["pgs:age_at_assessment"] * gmat[, 1])   # time-resolved wald ratio at midpoint t = k - 1/2; linear time-dependence
-gmat[, 3] <- dbdt[, 2] / (
-  coef.exp.qdr["pgs"] + coef.exp.qdr["pgs:age_at_assessment"] * gmat[, 1] +
-  coef.exp.qdr["pgs:I(age_at_assessment^4)"] * gmat[, 1] ^ 4   # quartic time-dependence
-)
-
-loess.f  <- predict(loess.m, gmat[, 1], se = TRUE)
-
-gmat[, 4] <-
-  dbdt[, 2] / loess.f$fit                                        # LOESS time-dependence (with linear extrapolation)
-
-
-
-
-# integration of gamma(t) to Gamma(t):
-q.trap <-
-  FALSE   # q.trap = TRUE -> trapezoidal rule, q.trap = FALSE -> midpoint rule (Riemann sum)
+Glin <- time_dependent_MR(age.seq = age.seq, model_type = "glm", betas = coef.exp.lin["pgs:age_at_assessment"], exponents = 1, fixed_effect = coef.exp.lin["pgs"])
+Gqdr <- time_dependent_MR(age.seq = age.seq, model_type = "glm",  betas = coef.exp.lin[c("pgs:age_at_assessment","pgs:I(age_at_assessment^4)")], exponents = c(1,4), fixed_effect = coef.exp.lin["pgs"])
+Gloe <- time_dependent_MR(age.seq = age.deq, model_type = "loess", loess_model = loess.m)
 
 integrate_estimates <- function(age, beta, q.trap = TRUE){
   stopifnot(
@@ -71,35 +50,6 @@ integrate_estimates <- function(age, beta, q.trap = TRUE){
     else c(0, cumsum(diff(age) * zoo::rollmean(beta, 2)))
   c(age, effects) |> matrix(ncol = 2, dimnames = list(NULL, c("age", "effect")))
 }
-
-Glin <- integrate_estimates(gmat[,1], gmat[,2], q.trap)
-Gqdr <- integrate_estimates(gmat[,1], gmat[,3], q.trap)
-Gloe <- integrate_estimates(gmat[,1], gmat[,4], q.trap)
-
-loess.f   <- predict(loess.m, beta[, 1], se = TRUE)
-
-total_effect_linear <- get_total_genetic_effect(betas = coef.exp.lin["pgs:age_at_assessment"], exponents = 1, fixed_effect = coef.exp.lin["pgs"])
-total_effect_qdr <- get_total_genetic_effect(betas = coef.exp.lin[c("pgs:age_at_assessment","pgs:I(age_at_assessment^4)")], exponents = c(1,4), fixed_effect = coef.exp.lin["pgs"])
-total_effect_loess <- loess.f$fit
-
-if (q.trap) {
-  Glin[, 3] <- calculate_mr_variance_trapz(effect = total_effect_linear, variance = beta[, "var"])
-  Gqdr[, 3] <- calculate_mr_variance_trapz(effect = total_effect_qdr, variance = beta[, "var"])
-  Gloe[, 3] <- calculate_mr_variance_trapz(effect = total_effect_loess, variance = beta[, "var"])
-} else {
-  # 95% CIs using the variance for the midpoint rule (-> uncorrelated errors; wider CIs than for the trapezoidal rule)
-  Glin[, 3] <- beta[, "var"] / total_effect_linear ^ 2
-  Gqdr[, 3] <- beta[, "var"] / total_effect_qdr ^ 2
-  Gloe[, 3] <- beta[, "var"] / total_effect_loess ^ 2
-}
-Glin[, 4] <- Glin[, 2] - 1.96 * sqrt(Glin[, 3])
-Glin[, 5] <- Glin[, 2] + 1.96 * sqrt(Glin[, 3])
-
-Gqdr[, 4] <- Gqdr[, 2] - 1.96 * sqrt(Gqdr[, 3])
-Gqdr[, 5] <- Gqdr[, 2] + 1.96 * sqrt(Gqdr[, 3])
-
-Gloe[, 4] <- Gloe[, 2] - 1.96 * sqrt(Gloe[, 3])
-Gloe[, 5] <- Gloe[, 2] + 1.96 * sqrt(Gloe[, 3])
 
 calculate_mr_variance_trapz <- function(effect, variance) {
   stopifnot(
@@ -133,12 +83,39 @@ get_total_genetic_effect <- function(ages, betas, exponents, fixed_effect) {
     length(betas) == length(exponents),
     length(betas) > 0, length(exponents) > 0, length(ages) > 0
   )
-  vapply(ages, \(age) {
+  result <- vapply(ages, \(age) {
     sum(betas * age ^ exponents) + fixed_effect
   }, numeric(1))
+  # Add 0 in beginning bc integral at time 0 is 0
+  c(0,ages,0, result) |> matrix(ncol=2)
 }
 
-# beta <- beta
-# Glinear <- Glin
-# Gquartic <- Gqdr
-# Gloess <- Gloe
+time_dependent_MR <- function(age.seq, model_type = c("loess", "glm"), loess_model, betas, exponents, fixed_effect,) {
+  model_type <- match.arg(model_type)
+  midpoints <-  zoo::rollmean(age.seq, 2)
+  total_effects <- NULL
+  midpoint_effects <- NULL
+  if(model_type == "loess"){
+    total_effects <- predict(loess_model, age.se, se = TRUE)
+    midpoint_effects <- predict(loess_model, midpoints, se = TRUE)
+  } else {
+    total_effects <- get_total_genetic_effect(ages = age.seq, betas = betas,
+                                              exponents = exponents,
+                                              fixed_effect = fixed_effect)
+    midpoint_effects <- get_total_genetic_effect(ages = midpoints, betas = betas,
+                                              exponents = exponents,
+                                              fixed_effect = fixed_effect)
+  }
+  wald_ratio <- dBeta / midpoint_effects
+  Gamma <- integrate_estimates(midpoints, wald_ratio)
+  Gamma_variance <-
+    if (q.trap) calculate_mr_variance_trapz(effect = total_effects, variance = beta[, "var"])
+    else beta[, "var"] / total_effects ^ 2
+  data.frame(
+    Gamma = Gamma,
+    var = Gamma_variance,
+    L95 = Gamma - 1.96 * sqrt(Gamma_variance),
+    L95 = Gamma + 1.96 * sqrt(Gamma_variance)
+  )
+
+}

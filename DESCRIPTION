@@ -11,6 +11,7 @@ Imports:
     pracma,
     sandwich,
     stringr,
+    survival,
     timereg
 Depends:
     R (>=4.1.0)

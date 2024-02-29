@@ -64,7 +64,7 @@ calculate_genetic_effects <- function(
 #'   (Default 1)
 #'
 #' @details The relationship is always modeled as
-#'   \code{exposure ~ pgs + age + covariates + interaction_terms} where
+#'   \code{exposure ~ pgs + age + covariates + interaction_terms} where
 #'   \code{interaction_terms} is an arbitrary number of PGS-Age interactions.
 #'   These interactions take the form \code{pgs:(age^exponent)} for each
 #'   exponent in \code{exponents}. Therefore, it is possible to include multiple
@@ -135,16 +135,16 @@ get_age_stratified_effects <- function(data, pgs = "pgs",
   if (is.null(age_range)) {
     age_range <- range(data[, exposure_age], na.rm = TRUE)
   }
-  if (is.na(age_range) || (age_range[0] > age_range[1])) {
+  if (any(is.na(age_range)) || (age_range[1] > age_range[2])) {
     stop(stringr::str_glue("Invalid age range: {age_range}"))
   }
-  if (age_range[0] == age_range[1]) warning("Age range is only one age")
+  if (age_range[1] == age_range[2]) warning("Age range is only one age")
 
   age_seq <- seq(from = age_range[1], to = age_range[2], by = age_step)
   # Regress min age and before
   below_min_age <- list(data[, exposure_age] <= age_seq[1])
   # Each age inbetween
-  at_specific_age <- lapply(age_seq[c(-1, length(age_seq))], \(age) {
+  at_specific_age <- lapply(age_seq[-c(1, length(age_seq))], \(age) {
     data[, exposure_age] == age
   })
   # Max age and after
@@ -153,16 +153,15 @@ get_age_stratified_effects <- function(data, pgs = "pgs",
   age_filters <- c(below_min_age, at_specific_age, above_max_age)
 
   age_formula <- reformulate(
-    termlabels = c(pgs, covariats),
+    termlabels = c(pgs, covariates),
     response = exposure
   )
 
-  model_list <- lapply(age_filters, \(filter) {
+  model_list <- lapply(age_filters, \(age_filter) {
     glm(
       age_formula,
       family = "gaussian",
-      subset = filter,
-      data = exp.data.age
+      data = data[age_filter, ]
     )
   })
   model_names <- age_seq
@@ -174,7 +173,7 @@ get_age_stratified_effects <- function(data, pgs = "pgs",
   coef_and_age <- data.frame(beta = age_coefficients, age = age_seq)
   # time-dependent (disease-specific) effects are estimated from a LOESS fit to age-stratified effects
   loess_model <- loess(
-    beta ~ age,
+    beta ~ age,
     control = loess.control(surface = "direct"),
     family = "gaussian",
     span = 0.50,
@@ -254,7 +253,7 @@ regress_outcome <- function(data, pgs = "pgs", outcome = "outcome",
   # PGS effect on outcome
   outcome_formula <- reformulate(
     termlabels = c(pgs, covariates),
-    response = stringr::str_glue("Surv({outcome_age}, {outcome})")
+    response = stringr::str_glue("survival::Surv({outcome_age}, {outcome})")
   )
   outcome_model <- timereg::aalen(outcome_formula, data = data)
 }

@@ -9,6 +9,7 @@ Encoding: UTF-8
 LazyData: true
 Imports: 
     pracma,
+    rlang,
     sandwich,
     stringr,
     survival,
@@ -19,3 +20,5 @@ Authors@R: c(
     person("Daniel", "Schmitz", , "daniel.schmitz@igp.uu.se", role = "cre"),
     person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "cre")
   )
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1

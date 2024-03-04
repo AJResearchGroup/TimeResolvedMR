@@ -15,10 +15,20 @@ Imports:
     survival,
     timereg
 Depends:
-    R (>=4.1.0)
+    R (>= 4.1.0)
 Authors@R: c(
     person("Daniel", "Schmitz", , "daniel.schmitz@igp.uu.se", role = "cre"),
-    person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "cre")
+    person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "aut")
   )
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
+Collate: 
+    'TimeDependentModel-class.R'
+    'AalenTimeDependentModel.R'
+    'GlmTimeDependentModel.R'
+    'LoessTimeDependentModel.R'
+    'calculate_genetic_effects.R'
+    'perform_MR.R'
+    'time_dependent_aalen.R'
+    'time_dependent_glm.R'
+    'time_dependent_loess.R'

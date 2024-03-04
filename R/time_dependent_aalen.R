@@ -18,7 +18,7 @@
 time_dependent_aalen <- function(pgs, event, event_age, covariates) {
   # PGS effect on outcome
   outcome_model <- timereg::aalen(
-    survival::Surv(event_age, event) ~ pgs + .,
+    survival::Surv(event_age, event) ~ pgs + .,
     data = covariates
   )
   AalenTimeDependentModel(

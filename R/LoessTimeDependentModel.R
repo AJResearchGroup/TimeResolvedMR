@@ -23,6 +23,11 @@ setMethod("totalEffect", class_name, function(this, age){
   predict(model(this), age, se = TRUE)$fit
 })
 
+#' Named list of age-stratified models used to estimate effect strength for the
+#' LOESS model
+#' @keywords internal
+#' @rdname LoessTimeDependentModel-methods
+#' @export
 setGeneric("stratifiedModels", class_name, function(this) standardGeneric("stratifiedModels"))
 setMethod("stratifiedModels", class_name, function(this) {
   this@stratifiedModels

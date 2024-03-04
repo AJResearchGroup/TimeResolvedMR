@@ -15,6 +15,14 @@
 #' @export
 #'
 #' @examples
+#' # Start with random example data
+#' library(stats)
+#' pgs <- rnorm(50)
+#' event <- sample(c(TRUE,FALSE), 50, replace=TRUE)
+#' event_age <- rnorm(50, mean=40, sd = 5) |> pmax(20)
+#' covariates <- data.frame(covar = rnorm(50))
+#'
+#' model <- time_dependent_aalen(pgs, event, event_age, covariates)
 time_dependent_aalen <- function(pgs, event, event_age, covariates) {
   # PGS effect on outcome
   outcome_model <- timereg::aalen(
@@ -23,6 +31,6 @@ time_dependent_aalen <- function(pgs, event, event_age, covariates) {
   )
   AalenTimeDependentModel(
     model = outcome_model,
-    cumulative_effects = model$cum[, "pgs"]
+    cumulative_effects = outcome_model$cum[, "pgs"]
   )
 }

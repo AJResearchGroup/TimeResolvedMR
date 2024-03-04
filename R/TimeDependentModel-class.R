@@ -13,7 +13,7 @@ TimeDependentModel <- setClass(
 #' @param this The object from which to extract the model from.
 #'
 #' @export
-setGeneric("model", "TimeDependentModel", function(this) standardGeneric("model"))
+setGeneric("model", function(this) {standardGeneric("model")})
 setMethod("model", "TimeDependentModel", function(this){
   this@model
 })
@@ -24,7 +24,7 @@ setMethod("model", "TimeDependentModel", function(this){
 #' @param age The ages (or time points) for which to calculate the genetic effect
 #'
 #' @export
-setGeneric("totalEffect", "TimeDependentModel", function(this, age) standardGeneric("totalEffect"))
+setGeneric("totalEffect", function(this, age) standardGeneric("totalEffect"))
 setMethod("totalEffect", "TimeDependentModel", function(this, age){
   rlang::abort("Not implemented for base class TimeDependentModel!")
 })

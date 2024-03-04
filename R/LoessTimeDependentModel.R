@@ -1,4 +1,4 @@
-class_name <- "LoessTimeDependentModel"
+setOldClass("loess")
 
 #' Models the relationship between age and time-dependent genetic effects as
 #' estimated through a LOESS model
@@ -8,10 +8,10 @@ class_name <- "LoessTimeDependentModel"
 #'   estimate genetic effects.
 #'
 #' @seealso [GlmTimeDependentModel()], [time_dependent_loess()], [stats::loess()]
-#'
+#' @include TimeDependentModel-class.R
 #' @export
 LoessTimeDependentModel <- setClass(
-  class_name,
+  "LoessTimeDependentModel",
   contains = "TimeDependentModel",
   slots = c(
     model = "loess",
@@ -19,7 +19,7 @@ LoessTimeDependentModel <- setClass(
   )
 )
 
-setMethod("totalEffect", class_name, function(this, age){
+setMethod("totalEffect", "LoessTimeDependentModel", function(this, age){
   predict(model(this), age, se = TRUE)$fit
 })
 
@@ -28,7 +28,7 @@ setMethod("totalEffect", class_name, function(this, age){
 #' @keywords internal
 #' @rdname LoessTimeDependentModel-methods
 #' @export
-setGeneric("stratifiedModels", class_name, function(this) standardGeneric("stratifiedModels"))
-setMethod("stratifiedModels", class_name, function(this) {
+setGeneric("stratifiedModels", function(this) standardGeneric("stratifiedModels"))
+setMethod("stratifiedModels", "LoessTimeDependentModel", function(this) {
   this@stratifiedModels
 })

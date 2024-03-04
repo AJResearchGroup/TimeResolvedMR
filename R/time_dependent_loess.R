@@ -23,6 +23,21 @@
 #' @export
 #'
 #' @examples
+#' # Generate random example data
+#' library(stats)
+#' pgs <- rnorm(1000)
+#' pheno <- pgs * 3
+#' age <- rep(40:70, length.out = 1000)
+#' covariates <- data.frame(covar = rnorm(1000))
+#'
+#' # Infer age range from data
+#' time_dependent_loess(pgs, pheno, age, covariates)
+#'
+#' # Use explicit age range from 50 to 65
+#' time_dependent_loess(pgs, pheno, age, covariates, age_range = c(50,65))
+#'
+#' # Only estimate effects for every other year
+#' time_dependent_loess(pgs, pheno, age, covariates, age_step = 2)
 time_dependent_loess <- function(pgs, pheno, age, covariates,
                                  age_range = NULL, age_step = 1) {
   # Guess Age range if not given

@@ -22,9 +22,25 @@
 #' @export
 #'
 #' @examples
+#' # Generate random example data
+#' library(stats)
+#' pgs <- rnorm(50)
+#' pheno <- rnorm(50)
+#' age <- rnorm(50, mean = 50, sd = 5) |> pmax(20)
+#' covariates <- data.frame(covar = rnorm(50))
+#'
+#' # Run model with linear pgs-age interaction
+#' time_dependent_glm(pgs, pheno, age, covariates)
+#' # Model with quadratic interaction
+#' time_dependent_glm(pgs, pheno, age, covariates, exponents = 2)
+#' # Model with linear and quartic interaction
+#' time_dependent_glm(pgs, pheno, age, covariates, exponents = c(1,4))
+#' # Model with no pgs-age interaction
+#' time_dependent_glm(pgs, pheno, age, covariates, exponents = NULL)
 time_dependent_glm <- function(pgs, pheno, age, covariates, exponents = 1) {
   # Include PGS, PGS-Age interaction with arbitrary exponents and all covariates
   # Exponent = NULL is equivalent to no age interaction. This is on purpose
+  if (is.null(exponents)) exponents <- numeric()
   interaction_terms <- stringr::str_glue("pgs:I(age^{exponents})")
   model_formula <- reformulate(
     termlabels = c("pgs", interaction_terms, colnames(covariates)),

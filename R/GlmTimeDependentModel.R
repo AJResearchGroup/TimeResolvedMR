@@ -1,5 +1,3 @@
-class_name <- "GlmTimeDependentModel"
-
 #' Models the relationship between age and time-dependent genetic effects using
 #' a glm with interaction terms
 #'
@@ -8,20 +6,20 @@ class_name <- "GlmTimeDependentModel"
 #'   (`numeric` length 1)
 #' @slot interactionEffects The coefficients of the interaction terms (`numeric`)
 #' @slot exponents The exponent of age in the interaction terms (`numeric`)
-#'
+#' @include TimeDependentModel-class.R
 #' @export
 GlmTimeDependentModel <- setClass(
-  class_name,
+  "GlmTimeDependentModel",
   contains = "TimeDependentModel",
   slots = c(
     model = "glm",
     fixedEffect = "numeric",
-    interactionEffects <- "numeric",
+    interactionEffects = "numeric",
     exponents = "numeric"
   )
 )
 
-setValidity(class_name, function(this){
+setValidity("GlmTimeDependentModel", function(this){
   with(this, {
     if (length(fixedEffect) != 1)
       return(paste0("fixedEffect must have length 1. Is ", length(fixedEffect)))
@@ -38,25 +36,25 @@ setValidity(class_name, function(this){
 #' @keywords internal
 #' @rdname GlmTimeDependentModel-methods
 #' @export
-setGeneric("fixedEffect", class_name, function(this) standardGeneric("fixedEffect"))
-setMethod("fixedEffect", class_name, function(this) this@fixedEffect )
+setGeneric("fixedEffect", function(this) standardGeneric("fixedEffect"))
+setMethod("fixedEffect", "GlmTimeDependentModel", function(this) this@fixedEffect )
 
 #' Effect strength of the interaction terms. Same numer and order as `exponents`
 #' @keywords internal
 #' @rdname GlmTimeDependentModel-methods
 #' @export
-setGeneric("interactionEffects", class_name, function(this) standardGeneric("interactionEffects"))
-setMethod("interactionEffects", class_name, function(this) this@interactionEffects)
+setGeneric("interactionEffects", function(this) standardGeneric("interactionEffects"))
+setMethod("interactionEffects", "GlmTimeDependentModel", function(this) this@interactionEffects)
 
 #' The exponents of age in the interaction terms. Same number and order as
 #' `interactionEffects`
 #' @keywords internal
 #' @rdname GlmTimeDependentModel-methods
 #' @export
-setGeneric("exponents", class_name, function(this) standardGeneric("exponents"))
-setMethod("exponents", class_name, function(this) this@exponents)
+setGeneric("exponents", function(this) standardGeneric("exponents"))
+setMethod("exponents", "GlmTimeDependentModel", function(this) this@exponents)
 
-setMethod("totalEffect", class_name, function(this, age){
+setMethod("totalEffect", "GlmTimeDependentModel", function(this, age){
   vapply(age, \(a) {
     fixedEffect(this) + interactionEffects(this) * (a ^ exponents(this))
   }, numeric(1))

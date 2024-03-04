@@ -1,8 +1,9 @@
-class_name <- "AalenTimeDependentModel"
+setOldClass("aalen")
 
 # This is not assigned to the class name because I want a custom constructor
+#' @include TimeDependentModel-class.R
 setClass(
-  class_name,
+  "AalenTimeDependentModel",
   contains = "TimeDependentModel",
   slots = c(
     model = "aalen",
@@ -26,12 +27,12 @@ AalenTimeDependentModel <- function(model, cumulative_effects) {
   midpoints <- zoo::rollmean(model$cum[, "time"], 2)
   point_effects <- diff(cumulative_effects) / diff(model$cum[, "time"])
   new(
-    class_name,
+    "AalenTimeDependentModel",
     model = model,
     effectFunction = approxfun(x=midpoints, y=point_effects, method = "constant", rule = 2)
   )
 }
 
-setMethod("totalEffect", class_name, function(this, age){
+setMethod("totalEffect", "AalenTimeDependentModel", function(this, age){
   this@effectFunction(age)
 })

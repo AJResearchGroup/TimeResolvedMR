@@ -16,7 +16,7 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
       exponents = dots[["exponents"]]
     ),
     aalen = time_dependent_aalen(
-      pgs = pgs, event = pheno, event_age = age, covariates = covariates,
+      pgs = pgs, event = pheno, event_age = age, covariates = covariates
     ),
     rlang::abort(paste0("Unknown model type ", model_type))
   )
@@ -35,10 +35,12 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #' @param covariates Covariates to include in the model
 #' @param exposure_modeltype Type of the model to use for regression of exposure.
 #'   Either `loess` (default), `glm` or `aalen`
-#' @param exposure_modeltype Type of the model to use for regression of outcome.
-#'   Either `aalen` (default), `loess` or `glm`
+#' @param outcome_modeltype Type of the model to use for regression of outcome.
+#'   Either `aalen` (default), `loess` or `glm`. Models other than `aalen` are
+#'   not tested for statistical soundness.
 #' @param interaction_exponents Exponents to use for PGS-time interaction terms
-#'   in `glm` model. Otherwise unused
+#'   in `glm` model. Otherwise unused. Exponents are used for exposure and
+#'   outcome.
 #' @param age_range Range between which ages genetic effects on the exposure are
 #'   to be calculated for LOESS model. Otherwise unused. `NULL` means the range
 #'   should be inferred from the data. (Default: `NULL`)
@@ -55,6 +57,42 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #' @export
 #'
 #' @examples
+#' # Generate random example data
+#' library(stats)
+#' pgs <- rnorm(1000)
+#' exposure <- pgs * 3
+#' exposure_age <- rep(40:70, length.out = 1000)
+#' covariates <- data.frame(covar = rnorm(1000))
+#' outcome <- sample(c(TRUE,FALSE), 1000, replace=TRUE)
+#' outcome_age <- rnorm(1000, mean=60, sd = 3) |> pmax(40)
+#'
+#' # Default: LOESS model for exposure and Aalen for outcome. Age range is
+#' # inferred from data.
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates)
+#'
+#' # Only estimate effects every other year between ages 50 and 65
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates, age_range = c(50,65), age_step = 2)
+#'
+#' # Use GLM with linear pgs-age interaction instead for exposure
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates, exposure_modeltype = "glm")
+#'
+#' # GLM for exposure with linear and quartic interactions
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates, exposure_modeltype = "glm", interaction_exponents = c(1,4))
+#'
+#' # GLM for outcome, explicit LOESS model for exposure. Exponents apply to
+#' # outcome glm. Age range is inferred
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates, exposure_modeltype = "loess", outcome_modeltype = "glm",
+#'   interaction_exponents = c(1,4))
+#'
+#' # GLM for outcome and exposure. The exponents are used for both regressions
+#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#'   covariates, exposure_modeltype = "glm", outcome_modeltype = "glm",
+#'   interaction_exponents = c(1,4))
 calculate_genetic_effects <- function(
     pgs, exposure, outcome, exposure_age, outcome_age, covariates,
     exposure_modeltype = c("loess", "glm", "aalen"),
@@ -65,19 +103,19 @@ calculate_genetic_effects <- function(
   outcome_modeltype <- match.arg(outcome_modeltype)
 
   exposure_model <- select_model(
-    model_type = exposure_model, pgs = pgs, pheno = exposure, age = exposure_age,
+    model_type = exposure_modeltype, pgs = pgs, pheno = exposure, age = exposure_age,
     covariates = covariates, interaction_exponents = interaction_exponents,
     age_range = age_range, age_step = age_step
   )
 
   outcome_model <- select_model(
-    model_type = outcome_model, pgs = pgs, pheno = outcome, age = outcome_age,
+    model_type = outcome_modeltype, pgs = pgs, pheno = outcome, age = outcome_age,
     covariates = covariates, interaction_exponents = interaction_exponents,
     age_range = age_range, age_step = age_step
   )
   list(
-    exposure = exposure_time_dependent_model,
-    outcome = outcome_time_dependent_model
+    exposure = exposure_model,
+    outcome = outcome_model
   )
 }
 
@@ -96,6 +134,22 @@ calculate_genetic_effects <- function(
 #' @export
 #'
 #' @examples
+#' # Random example data
+#' library(stats)
+#' data <- data.frame(
+#'   pgs = rnorm(50),
+#'   outcome = sample(c(TRUE,FALSE), 50, replace=TRUE),
+#'   outcome_age = rnorm(50, mean = 50, sd = 5) |> pmax(20),
+#'   expoure_age = rnorm(50, mean = 30, sd = 2) |> pmax(15)
+#' )
+#'
+#' # Columns are already named the same as default values
+#' remove_outcome_cases <- function(data)
+#'
+#' # Case where one column has a different name
+#' data$event <- data$outcome
+#' data$outcome <- NULL
+#' remove_outcome_cases <- function(data, outcome = "event")
 remove_outcome_cases <- function(data, outcome = "outcome",
                                  outcome_age = "outcome_age",
                                  exposure_age = "exposure_age") {
@@ -104,34 +158,3 @@ remove_outcome_cases <- function(data, outcome = "outcome",
     (data[, outcome_age] < data[, exposure_age])
   data[!prior_event, ]
 }
-
-#' Subsets and renames columns to default values of analysis functions
-#'
-#' @param data A data frame containing the data to be analyzed
-#' @param pgs Column name of polygenic scores
-#' @param exposure Column name of exposure measurements.
-#'   Can be case/control or continuous.
-#' @param outcome Column name of outcome measurements.
-#'   At this point only case/control
-#' @param exposure_age Column name of age at which the exposure was measured/happened
-#' @param outcome_age Column name of age at which the outcome happened
-#' @param covariates Column names of covariates
-#'
-#' @return A renamed data frame with only columns specified by the function's
-#'   arguments
-#'
-#' @details This function does not modify the original data frame.
-#'   By default \code{covariates} is set to all column names that are not set as
-#'   values of the other arguments.
-#'
-#' @export
-#'
-#' @examples
-rename_columns <- function(data, pgs, exposure, outcome,
-                           exposure_age, outcome_age,
-                           covariates = setdiff(colnames(data), c(pgs, exposure, outcome, exposure_age, outcome_age))) {
-  transformed <- data[, c(pgs, exposure, exposure_age, outcome_age, covariates)]
-  colnames(transformed)[1:4] <- c("pgs", "exposure", "exposure_age", "outcome_age")
-  transformed
-}
-

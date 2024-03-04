@@ -13,7 +13,8 @@ Imports:
     sandwich,
     stringr,
     survival,
-    timereg
+    timereg,
+    zoo
 Depends:
     R (>= 4.1.0)
 Authors@R: c(

@@ -69,6 +69,6 @@ time_dependent_MR <- function(age.seq, exposure_model, outcome_model,
 
 }
 
-Glin <- time_dependent_MR(age.seq = age.seq, model_type = "glm", betas = coef.exp.lin["pgs:age_at_assessment"], exponents = 1, fixed_effect = coef.exp.lin["pgs"])
-Gqdr <- time_dependent_MR(age.seq = age.seq, model_type = "glm",  betas = coef.exp.lin[c("pgs:age_at_assessment","pgs:I(age_at_assessment^4)")], exponents = c(1,4), fixed_effect = coef.exp.lin["pgs"])
-Gloe <- time_dependent_MR(age.seq = age.deq, model_type = "loess", loess_model = loess.m)
+#Glin <- time_dependent_MR(age.seq = age.seq, model_type = "glm", betas = coef.exp.lin["pgs:age_at_assessment"], exponents = 1, fixed_effect = coef.exp.lin["pgs"])
+#Gqdr <- time_dependent_MR(age.seq = age.seq, model_type = "glm",  betas = coef.exp.lin[c("pgs:age_at_assessment","pgs:I(age_at_assessment^4)")], exponents = c(1,4), fixed_effect = coef.exp.lin["pgs"])
+#Gloe <- time_dependent_MR(age.seq = age.deq, model_type = "loess", loess_model = loess.m)

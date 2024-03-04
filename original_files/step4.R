@@ -58,192 +58,192 @@ set.dis <-
 if (q.aalen)
 {
   if (q.merged.pgs)
-  {
-    age.seq          <- seq(age.start, age.stop, age.step)
-
-    # PGS -> exposure: estimation of effect of PGS on exposure BMI
-    out.data <- out.data[, set.dis]
-    if (w.outtype == "bin")
     {
-      # dis      <- which(out.data[,2] == 1)           # <--- NOTE: remove outcome cases for exposure to minimize reversed causation/weak-instrument bias for time-fixed betaG
-      dis      <-
-        which((out.data[, 2] == 1) &
-                (out.data[, 3] < exp.data$age_at_assessment)) # remove cases with T_event < T_assessment for estimation of exposure effect betaG = betaG(t)
-      # dis      <- {}   # removed none, assuming that the binary response is just a relatization of an underlying continuous response
-    } else
-    {
-      dis      <-
-        {
-        }                                 # <--- NOTE: for continuous response, no removal of cases to minimize weak-instrument bias can be performed
-    }
-    non.dis  <-
-      !(seq(1, nrow(exp.data), by = 1) %in% dis)   # healthy controls
+      age.seq          <- seq(age.start, age.stop, age.step)
 
-    exp.data$pgs <- pgs
-    exp.data$outcome_controls <- non.dis
-    exp.data.omit <- na.omit(exp.data)
-
-    healthy <- which(exp.data.omit$outcome_controls)
-    p.exp.lin <-
-      glm(
-        bmi.ztf ~ pgs + pgs:age_at_assessment + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
-        family = "gaussian",
-        subset = healthy,
-        data = exp.data.omit
-      )
-    p.exp.qdr <-
-      glm(
-        bmi.ztf ~ pgs + pgs:age_at_assessment + pgs:I(age_at_assessment ^ 4) + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
-        family = "gaussian",
-        subset = healthy,
-        data = exp.data.omit
-      )
-
-    coef.exp.lin <-
-      summary(p.exp.lin)$coef[c(2, 51), 1]      # this is the time-dependent PGS effect on BMI to be used in the MR estimation!!!
-    coef.exp.qdr <-
-      summary(p.exp.qdr)$coef[c(2, 51, 52), 1]   # this is the time-dependent PGS effect on BMI to be used in the MR estimation!!!
-
-    # local regression (LOESS) fitting to age-stratified data:
-    age.ukb <- seq(40, 70, by = 1)
-    coef.exp.age <-
-      matrix(rep(NA, length(age.ukb) * 3), length(age.ukb), 3)
-    for (j in 1:length(age.ukb))
-    {
-      if (j == 1)
+      # PGS -> exposure: estimation of effect of PGS on exposure BMI
+      out.data <- out.data[, set.dis]
+      if (w.outtype == "bin")
       {
-        exp.data.age <-
-          exp.data.omit[which(exp.data.omit$age_at_assessment <= age.ukb[j]), ]
-      } else if (j == length(age.ukb))
-      {
-        exp.data.age <-
-          exp.data.omit[which(exp.data.omit$age_at_assessment >= age.ukb[j]), ]
+        # dis      <- which(out.data[,2] == 1)           # <--- NOTE: remove outcome cases for exposure to minimize reversed causation/weak-instrument bias for time-fixed betaG
+        dis      <-
+          which((out.data[, 2] == 1) &
+                  (out.data[, 3] < exp.data$age_at_assessment)) # remove cases with T_event < T_assessment for estimation of exposure effect betaG = betaG(t)
+        # dis      <- {}   # removed none, assuming that the binary response is just a relatization of an underlying continuous response
       } else
       {
-        exp.data.age <-
-          exp.data.omit[which(exp.data.omit$age_at_assessment == age.ukb[j]), ]
+        dis      <-
+          {
+          }                                 # <--- NOTE: for continuous response, no removal of cases to minimize weak-instrument bias can be performed
       }
+      non.dis  <-
+        !(seq(1, nrow(exp.data), by = 1) %in% dis)   # healthy controls
 
-      healthy <- which(exp.data.age$outcome_controls)
-      p.exp.age <-
+      exp.data$pgs <- pgs
+      exp.data$outcome_controls <- non.dis
+      exp.data.omit <- na.omit(exp.data)
+
+      healthy <- which(exp.data.omit$outcome_controls)
+      p.exp.lin <-
         glm(
-          bmi.ztf ~ pgs + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 +
-            pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
+          bmi.ztf ~ pgs + pgs:age_at_assessment + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
           family = "gaussian",
           subset = healthy,
-          data = exp.data.age
+          data = exp.data.omit
+        )
+      p.exp.qdr <-
+        glm(
+          bmi.ztf ~ pgs + pgs:age_at_assessment + pgs:I(age_at_assessment ^ 4) + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
+          family = "gaussian",
+          subset = healthy,
+          data = exp.data.omit
         )
 
-      if (dim(summary(p.exp.age)$coef)[1] > 1)
-        coef.exp.age[j, ] <- summary(p.exp.age)$coef[2, c(1, 2, 4)]
-    }
+      coef.exp.lin <-
+        summary(p.exp.lin)$coef[c(2, 51), 1]      # this is the time-dependent PGS effect on BMI to be used in the MR estimation!!!
+      coef.exp.qdr <-
+        summary(p.exp.qdr)$coef[c(2, 51, 52), 1]   # this is the time-dependent PGS effect on BMI to be used in the MR estimation!!!
 
-    # time-dependent (disease-specific) effects are estimated from a LOESS fit to age-stratified effects (NOTE: outcome cases are removed prior to effect estimation)
-    loess.m <-
-      loess(
-        coef.exp.age[, 1] ~ age.ukb,
-        control = loess.control(surface = "direct"),
-        family = "gaussian",
-        span = 0.50,
-        degree = 1
-      )   # linear extrapolation
-    # loess.fit <- predict(loeess.m, t (insert specific variable name), se = TRUE)
-    # dEta_dt/loess.fit$fit
+      # local regression (LOESS) fitting to age-stratified data:
+      age.ukb <- seq(40, 70, by = 1)
+      coef.exp.age <-
+        matrix(rep(NA, length(age.ukb) * 3), length(age.ukb), 3)
+      for (j in 1:length(age.ukb))
+      {
+        if (j == 1)
+        {
+          exp.data.age <-
+            exp.data.omit[which(exp.data.omit$age_at_assessment <= age.ukb[j]), ]
+        } else if (j == length(age.ukb))
+        {
+          exp.data.age <-
+            exp.data.omit[which(exp.data.omit$age_at_assessment >= age.ukb[j]), ]
+        } else
+        {
+          exp.data.age <-
+            exp.data.omit[which(exp.data.omit$age_at_assessment == age.ukb[j]), ]
+        }
 
-    date()
+        healthy <- which(exp.data.age$outcome_controls)
+        p.exp.age <-
+          glm(
+            bmi.ztf ~ pgs + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 +
+              pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
+            family = "gaussian",
+            subset = healthy,
+            data = exp.data.age
+          )
 
-    # PGS -> outcome: estimation of effect of PGS on outcome, using Aalen's additive hazard model
-    if (w.outtype == "bin")
-    {
-      out.data$event <- out.data[, 2]
-      out.data$tstop <- out.data[, 3]
-    }
+        if (dim(summary(p.exp.age)$coef)[1] > 1)
+          coef.exp.age[j, ] <- summary(p.exp.age)$coef[2, c(1, 2, 4)]
+      }
 
-    dim(exp.data)   # log size of exp.data to check that it is compatible with out.data and original exp.data (= exp.data.trmr)
-    covars <-
-      cbind(
-        exp.data$sex,
-        out.data$array,
-        out.data$centre,
-        out.data$pc1,
-        out.data$pc2,
-        out.data$pc3,
-        out.data$pc4,
-        out.data$pc5,
-        out.data$pc6,
-        out.data$pc7,
-        out.data$pc8,
-        out.data$pc9,
-        out.data$pc10,
-        out.data$pc11,
-        out.data$pc12,
-        out.data$pc13,
-        out.data$pc14,
-        out.data$pc15,
-        out.data$pc16,
-        out.data$pc17,
-        out.data$pc18,
-        out.data$pc19,
-        out.data$pc20,
-        out.data$pc21,
-        out.data$pc22,
-        out.data$pc23,
-        out.data$pc24,
-        out.data$pc25
-      )
-    covars <- as.data.frame(covars)
+      # time-dependent (disease-specific) effects are estimated from a LOESS fit to age-stratified effects (NOTE: outcome cases are removed prior to effect estimation)
+      loess.m <-
+        loess(
+          coef.exp.age[, 1] ~ age.ukb,
+          control = loess.control(surface = "direct"),
+          family = "gaussian",
+          span = 0.50,
+          degree = 1
+        )   # linear extrapolation
+      # loess.fit <- predict(loeess.m, t (insert specific variable name), se = TRUE)
+      # dEta_dt/loess.fit$fit
 
-    colnames(covars) <-
-      c(
-        "sex",
-        "array",
-        "centre",
-        "pc1",
-        "pc2",
-        "pc3",
-        "pc4",
-        "pc5",
-        "pc6",
-        "pc7",
-        "pc8",
-        "pc9",
-        "pc10",
-        "pc11",
-        "pc12",
-        "pc13",
-        "pc14",
-        "pc15",
-        "pc16",
-        "pc17",
-        "pc18",
-        "pc19",
-        "pc20",
-        "pc21",
-        "pc22",
-        "pc23",
-        "pc24",
-        "pc25"
-      )
+      date()
 
-    if (w.outtype == "bin")
-    {
-      covars$event <- out.data$event
-      covars$tstop <- out.data$tstop
+      # PGS -> outcome: estimation of effect of PGS on outcome, using Aalen's additive hazard model
+      if (w.outtype == "bin")
+      {
+        out.data$event <- out.data[, 2]
+        out.data$tstop <- out.data[, 3]
+      }
+
+      dim(exp.data)   # log size of exp.data to check that it is compatible with out.data and original exp.data (= exp.data.trmr)
+      covars <-
+        cbind(
+          exp.data$sex,
+          out.data$array,
+          out.data$centre,
+          out.data$pc1,
+          out.data$pc2,
+          out.data$pc3,
+          out.data$pc4,
+          out.data$pc5,
+          out.data$pc6,
+          out.data$pc7,
+          out.data$pc8,
+          out.data$pc9,
+          out.data$pc10,
+          out.data$pc11,
+          out.data$pc12,
+          out.data$pc13,
+          out.data$pc14,
+          out.data$pc15,
+          out.data$pc16,
+          out.data$pc17,
+          out.data$pc18,
+          out.data$pc19,
+          out.data$pc20,
+          out.data$pc21,
+          out.data$pc22,
+          out.data$pc23,
+          out.data$pc24,
+          out.data$pc25
+        )
+      covars <- as.data.frame(covars)
+
+      colnames(covars) <-
+        c(
+          "sex",
+          "array",
+          "centre",
+          "pc1",
+          "pc2",
+          "pc3",
+          "pc4",
+          "pc5",
+          "pc6",
+          "pc7",
+          "pc8",
+          "pc9",
+          "pc10",
+          "pc11",
+          "pc12",
+          "pc13",
+          "pc14",
+          "pc15",
+          "pc16",
+          "pc17",
+          "pc18",
+          "pc19",
+          "pc20",
+          "pc21",
+          "pc22",
+          "pc23",
+          "pc24",
+          "pc25"
+        )
+
+      if (w.outtype == "bin")
+      {
+        covars$event <- out.data$event
+        covars$tstop <- out.data$tstop
+      } else
+      {
+        #            covars$out <- out.data$response
+      }
+      covars$pgs    <- pgs
+      covars$centre <- as.factor(covars$centre)
+      covars        <- na.omit(covars)
+
+      p.out <-
+        aalen(
+          Surv(tstop, event) ~ pgs + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
+          data = covars
+        )
+
     } else
-    {
-      #            covars$out <- out.data$response
-    }
-    covars$pgs    <- pgs
-    covars$centre <- as.factor(covars$centre)
-    covars        <- na.omit(covars)
-
-    p.out <-
-      aalen(
-        Surv(tstop, event) ~ pgs + sex + array + centre + pc1 + pc2 + pc3 + pc4 + pc5 + pc6 + pc7 + pc8 + pc9 + pc10 + pc11 + pc12 + pc13 + pc14 + pc15 + pc16 + pc17 + pc18 + pc19 + pc20 + pc21 + pc22 + pc23 + pc24 + pc25,
-        data = covars
-      )
-
-  } else
   {
     # first subsample:
     # second subsample:

@@ -59,7 +59,7 @@ time_dependent_loess <- function(pgs, pheno, age, covariates,
 
   age_filters <- c(below_min_age, at_specific_age, above_max_age)
 
-  age_formula <- reformulate(
+  age_formula <- stats::reformulate(
     termlabels = c("pgs", colnames(covariates)),
     response = "pheno"
   )
@@ -69,7 +69,7 @@ time_dependent_loess <- function(pgs, pheno, age, covariates,
   data$age <- age
 
   model_list <- lapply(age_filters, \(age_filter) {
-    glm(
+    stats::glm(
       age_formula,
       family = "gaussian",
       data = data[age_filter, ]
@@ -80,12 +80,12 @@ time_dependent_loess <- function(pgs, pheno, age, covariates,
   model_names[1] <- paste0("<=", model_names[1])
   names(model_list) <- model_names
 
-  age_coefficients <- model_list |> vapply(\(model) coef(model)["pgs"], numeric(1))
+  age_coefficients <- model_list |> vapply(\(model) stats::coef(model)["pgs"], numeric(1))
   coef_and_age <- data.frame(beta = age_coefficients, age = age_seq)
   # time-dependent (disease-specific) effects are estimated from a LOESS fit to age-stratified effects
-  loess_model <- loess(
+  loess_model <- stats::loess(
     beta ~ age,
-    control = loess.control(surface = "direct"),
+    control = stats::loess.control(surface = "direct"),
     family = "gaussian",
     span = 0.50,
     degree = 1,

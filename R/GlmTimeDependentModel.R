@@ -7,6 +7,7 @@
 #' @slot interactionEffects The coefficients of the interaction terms (`numeric`)
 #' @slot exponents The exponent of age in the interaction terms (`numeric`)
 #' @include TimeDependentModel-class.R
+#' @docType class
 #' @export
 GlmTimeDependentModel <- setClass(
   "GlmTimeDependentModel",
@@ -33,27 +34,41 @@ setValidity("GlmTimeDependentModel", function(this){
 })
 
 #' Strength of the fixed effect
-#' @keywords internal
-#' @rdname GlmTimeDependentModel-methods
+#'
+#' @param this The model to get the fixed effect strength from
+#' @rdname fixedEffect-methods
+#' @docType methods
 #' @export
 setGeneric("fixedEffect", function(this) standardGeneric("fixedEffect"))
+#' @rdname fixedEffect-methods
+#' @aliases fixedEffect,GlmTimeDependentModel-method
 setMethod("fixedEffect", "GlmTimeDependentModel", function(this) this@fixedEffect )
 
-#' Effect strength of the interaction terms. Same numer and order as `exponents`
-#' @keywords internal
-#' @rdname GlmTimeDependentModel-methods
+#' Effect strengths of the interaction terms. Same numer and order as `exponents`
+#'
+#' @param this The object to get the interaction effect strengths from
+#' @docType methods
+#' @rdname interactionEffects-methods
 #' @export
 setGeneric("interactionEffects", function(this) standardGeneric("interactionEffects"))
+#' @rdname interactionEffects-methods
+#' @aliases interactionEffects,GlmTimeDependentModel-method
 setMethod("interactionEffects", "GlmTimeDependentModel", function(this) this@interactionEffects)
 
 #' The exponents of age in the interaction terms. Same number and order as
 #' `interactionEffects`
-#' @keywords internal
-#' @rdname GlmTimeDependentModel-methods
+#'
+#' @param this The object to get the exponents from
+#' @docType methods
+#' @rdname exponents-methods
 #' @export
 setGeneric("exponents", function(this) standardGeneric("exponents"))
+#' @rdname exponents-methods
+#' @aliases exponents,GlmTimeDependentModel-method
 setMethod("exponents", "GlmTimeDependentModel", function(this) this@exponents)
 
+#' @rdname totalEffect-methods
+#' @aliases totalEffect,GlmTimeDependentModel-method
 setMethod("totalEffect", "GlmTimeDependentModel", function(this, age){
   vapply(age, \(a) {
     fixedEffect(this) + interactionEffects(this) * (a ^ exponents(this))

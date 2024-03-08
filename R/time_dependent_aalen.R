@@ -31,6 +31,7 @@ time_dependent_aalen <- function(pgs, event, event_age, covariates) {
   )
   AalenTimeDependentModel(
     model = outcome_model,
-    cumulative_effects = outcome_model$cum[, "pgs"]
+    cumulative_effects = outcome_model$cum[, "pgs"],
+    cumulative_variances = outcome_model$var.cum[, "pgs"]
   )
 }

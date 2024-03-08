@@ -19,16 +19,22 @@ LoessTimeDependentModel <- setClass(
   )
 )
 
+#' @rdname totalEffect-methods
+#' @aliases totalEffect,LoessTimeDependentModel-method
 setMethod("totalEffect", "LoessTimeDependentModel", function(this, age){
-  predict(model(this), age, se = TRUE)$fit
+  stats::predict(model(this), age, se = TRUE)$fit
 })
 
 #' Named list of age-stratified models used to estimate effect strength for the
 #' LOESS model
-#' @keywords internal
-#' @rdname LoessTimeDependentModel-methods
+#'
+#' @param this The instance to extract the models from
+#' @rdname stratifiedModels-methods
+#' @docType methods
 #' @export
 setGeneric("stratifiedModels", function(this) standardGeneric("stratifiedModels"))
+#' @rdname stratifiedModels-methods
+#' @aliases stratifiedModels,LoessTimeDependentModel-method
 setMethod("stratifiedModels", "LoessTimeDependentModel", function(this) {
   this@stratifiedModels
 })

@@ -42,15 +42,15 @@ time_dependent_glm <- function(pgs, pheno, age, covariates, exponents = 1) {
   # Exponent = NULL is equivalent to no age interaction. This is on purpose
   if (is.null(exponents)) exponents <- numeric()
   interaction_terms <- stringr::str_glue("pgs:I(age^{exponents})")
-  model_formula <- reformulate(
+  model_formula <- stats::reformulate(
     termlabels = c("pgs", interaction_terms, colnames(covariates)),
     response = "pheno"
   )
-  model <- glm(model_formula, family = "gaussian", data = covariates)
+  model <- stats::glm(model_formula, family = "gaussian", data = covariates)
   GlmTimeDependentModel(
     model = model,
     exponents = exponents,
-    fixedEffect = coef(model)["pgs"],
-    interactionEffects = coef(model)[interaction_terms]
+    fixedEffect = stats::coef(model)["pgs"],
+    interactionEffects = stats::coef(model)[interaction_terms]
   )
 }

@@ -8,3 +8,9 @@
 \description{
 Abstract class containing time-dependent effects for MR analysis
 }
+\section{Slots}{
+
+\describe{
+\item{\code{model}}{The underlying model}
+}}
+

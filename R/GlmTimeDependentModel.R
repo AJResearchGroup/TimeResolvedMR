@@ -71,6 +71,6 @@ setMethod("exponents", "GlmTimeDependentModel", function(this) this@exponents)
 #' @aliases totalEffect,GlmTimeDependentModel-method
 setMethod("totalEffect", "GlmTimeDependentModel", function(this, age){
   vapply(age, \(a) {
-    fixedEffect(this) + interactionEffects(this) * (a ^ exponents(this))
+    fixedEffect(this) + sum(interactionEffects(this) * (a ^ exponents(this)))
   }, numeric(1))
 })

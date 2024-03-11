@@ -18,7 +18,7 @@ integrate_estimates <- function(age, beta, method = c("trapezoidal", "midpoint")
     midpoint =  c(0, cumsum(diff(age) * zoo::rollmean(beta, 2))),
     "You should not be here"
   )
-  c(age, effects) |> matrix(ncol = 2, dimnames = list(NULL, c("age", "effect")))
+  effects
 }
 
 #' Calculate time-dependent effect variance of MR effects estimated by
@@ -119,17 +119,17 @@ time_dependent_MR <- function(age_seq, exposure_model, outcome_model,
   midpoints <-  zoo::rollmean(age_seq, 2)
   total_exposure_effects <- totalEffect(exposure_model, age_seq)
   midpoint_exposure_effects <- totalEffect(exposure_model, midpoints)
-  outcome_variances <- variance(outcome_model, midpoints)
-  outcome_effects <- totalEffect(outcome_model, midpoints)
-  dBeta <- diff(outcome_effects) / diff(midpoints)
+  outcome_variances <- variance(outcome_model, age_seq)
+  outcome_effects <- totalEffect(outcome_model, age_seq)
+  dBeta <- diff(outcome_effects) / diff(age_seq)
   wald_ratio <- dBeta / midpoint_exposure_effects
   Gamma <- integrate_estimates(midpoints, wald_ratio)
   Gamma_variance <- switch(method,
     trapezoidal = calculate_mr_variance_trapz(
-      effect = midpoint_exposure_effects,
+      effect = total_exposure_effects,
       variance = outcome_variances
     ),
-    midpoint =  outcome_variances / midpoint_exposure_effects ^ 2,
+    midpoint =  outcome_variances / total_exposure_effects ^ 2,
     "Method is neither trapezoidal nor midpoint. There should've been an error earlier."
   )
   data.frame(

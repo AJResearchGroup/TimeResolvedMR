@@ -30,15 +30,23 @@ setClass(
 AalenTimeDependentModel <- function(model, cumulative_effects, cumulative_variances) {
   if (!is(model, "aalen"))
     rlang::abort("model must be an Aalen model")
-  midpoints <- zoo::rollmean(model$cum[, "time"], 2)
-  dTime <- diff(model$cum[, "time"])
-  point_effects <- diff(cumulative_effects) / dTime
-  point_variances <- diff(cumulative_variances) / dTime
+  int_times <- round(model$cum[, "time"])
+  unique_times <- unique(int_times)
+  dTime <- diff(unique_times)
+  # Abusing approx to remove noise added by aalen
+  collapsed_effects <- approx(
+    int_times, cumulative_effects, xout = unique_times, ties = last,
+    method = "constant", rule = 2)$y
+  collapsed_vars <- approx(
+    int_times, cumulative_variances, xout = unique_times, ties = last,
+    method = "constant", rule = 2)$y
+  point_effects <- c(0, diff(collapsed_effects) / dTime)
+  point_variances <- c(0, diff(collapsed_vars) / dTime)
   new(
     "AalenTimeDependentModel",
     model = model,
-    effectFunction = stats::approxfun(x=midpoints, y=point_effects, method = "constant", rule = 2),
-    varianceFunction = stats::approxfun(x=midpoints, y=point_variances, method = "constant", rule = 2)
+    effectFunction = stats::approxfun(x=unique_times, y=point_effects, method = "constant", rule = 2),
+    varianceFunction = stats::approxfun(x=unique_times, y=point_variances, method = "constant", rule = 2)
   )
 }
 

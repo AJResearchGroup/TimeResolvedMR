@@ -123,7 +123,7 @@ time_dependent_MR <- function(age_seq, exposure_model, outcome_model,
   outcome_effects <- totalEffect(outcome_model, age_seq)
   dBeta <- diff(outcome_effects) / diff(age_seq)
   wald_ratio <- dBeta / midpoint_exposure_effects
-  Gamma <- integrate_estimates(midpoints, wald_ratio)
+  Gamma <- c(0, integrate_estimates(midpoints, wald_ratio))
   Gamma_variance <- switch(method,
     trapezoidal = calculate_mr_variance_trapz(
       effect = total_exposure_effects,
@@ -133,7 +133,7 @@ time_dependent_MR <- function(age_seq, exposure_model, outcome_model,
     "Method is neither trapezoidal nor midpoint. There should've been an error earlier."
   )
   data.frame(
-    age = midpoints,
+    age = c(0, midpoints),
     Gamma = Gamma,
     var = Gamma_variance,
     L95 = Gamma - 1.96 * sqrt(Gamma_variance),

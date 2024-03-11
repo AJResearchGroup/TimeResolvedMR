@@ -35,3 +35,4 @@ Collate:
     'time_dependent_aalen.R'
     'time_dependent_glm.R'
     'time_dependent_loess.R'
+    'utils.R'

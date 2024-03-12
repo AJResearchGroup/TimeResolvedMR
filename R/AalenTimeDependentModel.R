@@ -2,6 +2,7 @@ setOldClass("aalen")
 
 # This is not assigned to the class name because I want a custom constructor
 #' @include TimeDependentModel-class.R
+#' @include utils.R
 setClass(
   "AalenTimeDependentModel",
   contains = "TimeDependentModel",
@@ -34,10 +35,10 @@ AalenTimeDependentModel <- function(model, cumulative_effects, cumulative_varian
   unique_times <- unique(int_times)
   dTime <- diff(unique_times)
   # Abusing approx to remove noise added by aalen
-  collapsed_effects <- approx(
+  collapsed_effects <- stats::approx(
     int_times, cumulative_effects, xout = unique_times, ties = last,
     method = "constant", rule = 2)$y
-  collapsed_vars <- approx(
+  collapsed_vars <- stats::approx(
     int_times, cumulative_variances, xout = unique_times, ties = last,
     method = "constant", rule = 2)$y
   point_effects <- c(0, diff(collapsed_effects) / dTime)

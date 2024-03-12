@@ -1,63 +1,3 @@
-#' Numerically integrate effect estimates by age
-#'
-#' @param age Numeric vector containing ages
-#' @param beta Numeric vector containing effect estimates
-#' @param method The integration method to use. Either `trapezoidal` (default)
-#'   or `midpoint`.
-#'
-#' @return A numeric matrix with columns age and cumulative integral
-#' @keywords internal
-integrate_estimates <- function(age, beta, method = c("trapezoidal", "midpoint")){
-  stopifnot(
-    is.numeric(age),
-    is.numeric(beta)
-  )
-  method <- match.arg(method)
-  effects <- switch(method,
-    trapezoidal = pracma::cumtrapz(age, beta),
-    midpoint =  c(0, cumsum(diff(age) * zoo::rollmean(beta, 2))),
-    "You should not be here"
-  )
-  effects
-}
-
-#' Calculate time-dependent effect variance of MR effects estimated by
-#' integration using the trapezoidal rules
-#'
-#' @param effect Numeric vector of total genetic effects on exposure for each
-#'   time point
-#' @param variance Numeric vector of variance of genetic effect on outcome for
-#'   each time point.
-#'
-#' @return A numeric vector of variance at each time point
-#' @keywords internal
-calculate_mr_variance_trapz <- function(effect, variance) {
-  stopifnot(
-    is.numeric(effect),
-    is.numeric(variance),
-    length(effect) == length(variance),
-    length(effect) > 0
-  )
-  n <- length(effect)
-  var1 <- variance[1] / (16 * effect[1] ^ 2)
-  if (n < 2) return(var1)
-
-  var2 <- var1 + variance[2] / (4 * effect[2] ^ 2)
-  if (n < 3) return (c(var1,var2))
-
-  # At this point, we know that n > 2, so the following is safe:
-  point_variances <- c(
-    var1,
-    vapply(2:n, \(k){ variance[k] / (4 * effect[k] ^2) }, numeric(1))
-  )
-
-  c(
-    var1,
-    var2,
-    vapply(3:n, \(k) { var1 + point_variances[k-1] + point_variances[k] }, numeric(1))
-  )
-}
-
 #' Perform time-dependent MR analysis
 #'
 #' @param age_seq Ages at which to estimate exposure-outcome effect
@@ -116,28 +56,28 @@ time_dependent_MR <- function(age_seq, exposure_model, outcome_model,
     rlang::abort(paste0("age_seq is an invalid range: ", age_seq))
   }
 
-  midpoints <-  zoo::rollmean(age_seq, 2)
+  midpoints <- zoo::rollmean(age_seq, 2)
+
   total_exposure_effects <- totalEffect(exposure_model, age_seq)
   midpoint_exposure_effects <- totalEffect(exposure_model, midpoints)
+
   outcome_variances <- variance(outcome_model, age_seq)
   outcome_effects <- totalEffect(outcome_model, age_seq)
   dBeta <- diff(outcome_effects) / diff(age_seq)
+
   wald_ratio <- dBeta / midpoint_exposure_effects
-  Gamma <- c(0, integrate_estimates(midpoints, wald_ratio))
-  Gamma_variance <- switch(method,
-    trapezoidal = calculate_mr_variance_trapz(
-      effect = total_exposure_effects,
-      variance = outcome_variances
+
+  switch(method,
+    trapezoidal = integrate_trapezoid(
+      age = midpoints, wald_ratio = wald_ratio,
+      outcome_variance = outcome_variances,
+      exposure_effect = total_exposure_effects
     ),
-    midpoint =  outcome_variances / total_exposure_effects ^ 2,
+    midpoint = integrate_midpoint(
+      age = age_seq, wald_ratio = wald_ratio,
+      outcome_variance = outcome_variances,
+      exposure_effect = total_exposure_effects
+    ),
     "Method is neither trapezoidal nor midpoint. There should've been an error earlier."
   )
-  data.frame(
-    age = c(0, midpoints),
-    Gamma = Gamma,
-    var = Gamma_variance,
-    L95 = Gamma - 1.96 * sqrt(Gamma_variance),
-    H95 = Gamma + 1.96 * sqrt(Gamma_variance)
-  )
-
 }

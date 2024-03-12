@@ -33,6 +33,7 @@ Collate:
     'LoessTimeDependentModel.R'
     'TimeResolvedMR-package.R'
     'calculate_genetic_effects.R'
+    'integrate_estimates.R'
     'perform_MR.R'
     'time_dependent_aalen.R'
     'time_dependent_glm.R'

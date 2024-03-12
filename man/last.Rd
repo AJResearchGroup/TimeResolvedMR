@@ -15,7 +15,4 @@ The last element of \code{x}
 \description{
 Get last element of a vector-like object
 }
-\examples{
-last(1:3)
-}
 \keyword{internal}

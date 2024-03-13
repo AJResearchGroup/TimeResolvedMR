@@ -20,8 +20,11 @@ Imports:
 Depends:
     R (>= 4.1.0)
 Authors@R: c(
+    person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "aut"),
+    person("Fatemeh", "Hadizadeh", , "fatemeh.hadizadeh@igp.uu.se", role = "aut"),
+    person("Mathias", "Rask-Andersen", , "mathias.rask-andersen@igp.uu.se", role = "aut"),
     person("Daniel", "Schmitz", , "daniel.schmitz@igp.uu.se", role = "cre"),
-    person("Torgny", "Karlsson", , "torgny.karlsson@igp.uu.se", role = "aut")
+    person("Åsa", "Johansson", , "asa.johansson@igp.uu.se", role = "aut")
   )
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1

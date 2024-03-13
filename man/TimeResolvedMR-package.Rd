@@ -14,6 +14,9 @@ Performs Mendelian Randomization analyses accounting for time-dependent effects 
 Authors:
 \itemize{
   \item Torgny Karlsson \email{torgny.karlsson@igp.uu.se}
+  \item Fatemeh Hadizadeh \email{fatemeh.hadizadeh@igp.uu.se}
+  \item Mathias Rask-Andersen \email{mathias.rask-andersen@igp.uu.se}
+  \item Åsa Johansson \email{asa.johansson@igp.uu.se}
 }
 
 }

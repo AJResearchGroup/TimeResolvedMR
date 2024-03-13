@@ -1,7 +1,7 @@
 Package: TimeResolvedMR
 Type: Package
 Title: Time-Resolved Mendelian Randomization Analysis
-Version: 0.1.0
+Version: 0.9.0
 Description: Performs Mendelian Randomization analyses accounting for
     time-dependent effects of the exposure on the outcome.
 License: MIT + file LICENSE

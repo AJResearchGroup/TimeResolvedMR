@@ -10,6 +10,14 @@ last <- function(x) {
   tail(x, n = 1)
 }
 
+#' Derives cumulative effects where noise has been added to break ties
+#'
+#' @param x The parameter of the function (usually time). The fractional part
+#'   of the values are assumed to be noise.
+#' @param y The values of the functionh (usually cumulaitve effect)
+#'
+#' @return A numerically-derived function
+#' @keywords internal
 derive_without_noise <- function(x,y) {
   int_x <- round(x)
   unique_x <- unique(int_x)

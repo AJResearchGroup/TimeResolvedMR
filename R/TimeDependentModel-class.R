@@ -2,6 +2,7 @@
 #'
 #' @docType class
 #' @slot model The underlying model
+#' @exportClass TimeDependentModel
 TimeDependentModel <- setClass(
   "TimeDependentModel",
   contains = "VIRTUAL",

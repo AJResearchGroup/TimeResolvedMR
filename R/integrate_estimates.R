@@ -30,6 +30,7 @@ integrate_midpoint <- function(age, wald_ratio, exposure_effect, outcome_varianc
 #' @return A data.frame with age, effect (Gamma), variance and 95% CIs
 #' @keywords internal
 integrate_trapezoid <- function(age, wald_ratio, exposure_effect, outcome_variance) {
+
   # Add (0,0) if it isn't there yet
   if (age[1] != 0) {
     age <- c(0, age)
@@ -63,20 +64,25 @@ calculate_mr_variance_trapz <- function(effect, variance) {
     length(effect) == length(variance),
     length(effect) > 0
   )
-  n <- length(effect)
+  n <- length(effect) - 1
+  # This is just timepoint 0
+  if (n < 1) return(0)
+
+  # Now there is something to compute
   var1 <- variance[1] / (16 * effect[1] ^ 2)
-  if (n < 2) return(var1)
+  if (n == 1) return(var1)
 
   var2 <- var1 + variance[2] / (4 * effect[2] ^ 2)
-  if (n < 3) return (c(var1,var2))
+  if (n == 2) return (c(var1,var2))
 
-  # At this point, we know that n > 2, so the following is safe:
+  # At this point, we know that n > 3, so the following is safe:
   point_variances <- c(
     var1,
     vapply(2:n, \(k){ variance[k] / (4 * effect[k] ^2) }, numeric(1))
   )
 
   c(
+    0,
     var1,
     var2,
     vapply(3:n, \(k) { var1 + point_variances[k-1] + point_variances[k] }, numeric(1))

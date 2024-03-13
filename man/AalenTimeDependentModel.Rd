@@ -26,6 +26,9 @@ through Aalen's additive hazards model
 
 \item{\code{effectFunction}}{Function which can be used to retrieve the effect at a
 certain time point}
+
+\item{\code{varianceFunction}}{Function to retrieve the variance of the effect at a
+certain time point}
 }}
 
 \seealso{

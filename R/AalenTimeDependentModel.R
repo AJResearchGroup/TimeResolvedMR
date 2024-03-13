@@ -23,6 +23,8 @@ setClass(
 #' @slot model The Aalen model of the relationship
 #' @slot effectFunction Function which can be used to retrieve the effect at a
 #'   certain time point
+#' @slot varianceFunction Function to retrieve the variance of the effect at a
+#'   certain time point
 #'
 #' @seealso [LoessTimeDependentModel()], [GlmTimeDependentModel()],
 #'   [timereg::aalen()]
@@ -31,23 +33,11 @@ setClass(
 AalenTimeDependentModel <- function(model, cumulative_effects, cumulative_variances) {
   if (!is(model, "aalen"))
     rlang::abort("model must be an Aalen model")
-  int_times <- round(model$cum[, "time"])
-  unique_times <- unique(int_times)
-  dTime <- diff(unique_times)
-  # Abusing approx to remove noise added by aalen
-  collapsed_effects <- stats::approx(
-    int_times, cumulative_effects, xout = unique_times, ties = last,
-    method = "constant", rule = 2)$y
-  collapsed_vars <- stats::approx(
-    int_times, cumulative_variances, xout = unique_times, ties = last,
-    method = "constant", rule = 2)$y
-  point_effects <- c(0, diff(collapsed_effects) / dTime)
-  point_variances <- c(0, diff(collapsed_vars) / dTime)
   new(
     "AalenTimeDependentModel",
     model = model,
-    effectFunction = stats::approxfun(x=unique_times, y=point_effects, method = "constant", rule = 2),
-    varianceFunction = stats::approxfun(x=unique_times, y=point_variances, method = "constant", rule = 2)
+    effectFunction = derive_without_noise(x=model$cum[, "time"], y = cumulative_effects),
+    varianceFunction = derive_without_noise(x=model$cum[, "time"], y = cumulative_variances)
   )
 }
 

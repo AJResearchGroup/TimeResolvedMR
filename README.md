@@ -3,7 +3,6 @@
 
 <!-- badges: start -->
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/AJResearchGroup/TimeResolvedMR/r.yml)
-![GitHub License](https://img.shields.io/github/license/AJResearchGroup/TimeResolvedMR)
 <!-- badges: end -->
 
 Estimate time-varying effects of an exposure on an outcome using genetic

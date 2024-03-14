@@ -43,6 +43,15 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #' @param age_step Step size between ages for LOESS model. Otherwise unused.
 #'   (Default: 1)
 #'
+#' @details The function performs all analyses internally which can also be
+#'   carried out by the other functions in this package.
+#'   It is intended for quick one-off analyses as the other functions allow you
+#'   to reuse models.
+#'   The current implementation only allows for binary outcomes and has been
+#'   tested on continuous exposures, only.
+#'   Individuals with a recorded outcome event before the age at exposure
+#'   assessment will be removed from the model.
+#'
 #' @return A named list containing the models for exposure and outcome as
 #'   elements named `exposure` and `outcome`. Depending on the requested model,
 #'   these will be of type [AalenTimeDependentModel()], [GlmTimeDependentModel()]

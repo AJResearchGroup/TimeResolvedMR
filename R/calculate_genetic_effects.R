@@ -35,12 +35,8 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #' @param covariates Covariates to include in the model
 #' @param exposure_modeltype Type of the model to use for regression of exposure.
 #'   Either `loess` (default), `glm` or `aalen`
-#' @param outcome_modeltype Type of the model to use for regression of outcome.
-#'   Either `aalen` (default), `loess` or `glm`. Models other than `aalen` are
-#'   not tested for statistical soundness.
 #' @param interaction_exponents Exponents to use for PGS-time interaction terms
-#'   in `glm` model. Otherwise unused. Exponents are used for exposure and
-#'   outcome.
+#'   in `glm` model. Otherwise unused.
 #' @param age_range Range between which ages genetic effects on the exposure are
 #'   to be calculated for LOESS model. Otherwise unused. `NULL` means the range
 #'   should be inferred from the data. (Default: `NULL`)
@@ -83,24 +79,13 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
 #'   covariates, exposure_modeltype = "glm", interaction_exponents = c(1,4))
 #'
-#' # GLM for outcome, explicit LOESS model for exposure. Exponents apply to
-#' # outcome glm. Age range is inferred
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
-#'   covariates, exposure_modeltype = "loess", outcome_modeltype = "glm",
-#'   interaction_exponents = c(1,4))
-#'
-#' # GLM for outcome and exposure. The exponents are used for both regressions
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
-#'   covariates, exposure_modeltype = "glm", outcome_modeltype = "glm",
-#'   interaction_exponents = c(1,4))
-calculate_genetic_effects <- function(
+analyze_all_in_one <- function(
     pgs, exposure, outcome, exposure_age, outcome_age, covariates,
     exposure_modeltype = c("loess", "glm", "aalen"),
-    outcome_modeltype = c("aalen", "loess", "glm"),
     interaction_exponents = 1, age_range = NULL, age_step = 1) {
 
   exposure_modeltype <- match.arg(exposure_modeltype)
-  outcome_modeltype <- match.arg(outcome_modeltype)
+  outcome_modeltype <- "aalen"
 
   exposure_model <- select_model(
     model_type = exposure_modeltype, pgs = pgs, pheno = exposure, age = exposure_age,

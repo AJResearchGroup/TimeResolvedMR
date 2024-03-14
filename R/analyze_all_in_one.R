@@ -73,19 +73,19 @@ select_model <- function(model_type, pgs, pheno, age, covariates, ...) {
 #'
 #' # Default: LOESS model for exposure and Aalen for outcome. Age range is
 #' # inferred from data.
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#' analyze_all_in_one(pgs, exposure, outcome, exposure_age, outcome_age,
 #'   covariates)
 #'
 #' # Only estimate effects every other year between ages 50 and 65
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#' analyze_all_in_one(pgs, exposure, outcome, exposure_age, outcome_age,
 #'   covariates, age_range = c(50,65), age_step = 2)
 #'
 #' # Use GLM with linear pgs-age interaction instead for exposure
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#' analyze_all_in_one(pgs, exposure, outcome, exposure_age, outcome_age,
 #'   covariates, exposure_modeltype = "glm")
 #'
 #' # GLM for exposure with linear and quartic interactions
-#' calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
+#' analyze_all_in_one(pgs, exposure, outcome, exposure_age, outcome_age,
 #'   covariates, exposure_modeltype = "glm", interaction_exponents = c(1,4))
 #'
 analyze_all_in_one <- function(
@@ -107,10 +107,12 @@ analyze_all_in_one <- function(
     covariates = covariates, interaction_exponents = interaction_exponents,
     age_range = age_range, age_step = age_step
   )
-  list(
-    exposure = exposure_model,
-    outcome = outcome_model
-  )
+  age_seq <- if(!is.null(age_range))
+    seq(age_range[1], age_range[2], by = age_step)
+    else 0:max(outcome_age)
+  time_dependent_MR(
+    age_seq = age_seq, exposure_model = exposure_model,
+    outcome_model = outcome_model, method = "trapezoidal")
 }
 
 

@@ -50,12 +50,12 @@ outcome <- sample(c(TRUE,FALSE), 1000, replace=TRUE)
 outcome_age <- rnorm(1000, mean=60, sd = 3) |> pmax(40)
 
 # Estimate exposure and outcome effects
-models <- calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
-  covariates)
-time_dependent_MR(40:70, models$exposure, models$outcome)
+exposure_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates)
+outcome_model <- time_dependent_aalen(pgs, outcome, outcome_age, covariates)
+time_dependent_MR(40:70, exposure_model, outcome_model)
 }
 \seealso{
-\code{\link[=calculate_genetic_effects]{calculate_genetic_effects()}}, \code{\link[=time_dependent_aalen]{time_dependent_aalen()}},
+\code{\link[=analyze_all_in_one]{analyze_all_in_one()}}, \code{\link[=time_dependent_aalen]{time_dependent_aalen()}},
 \code{\link[=time_dependent_glm]{time_dependent_glm()}}, \code{\link[=time_dependent_loess]{time_dependent_loess()}},
 \code{\link[=GlmTimeDependentModel]{GlmTimeDependentModel}},
 \code{\link[=LoessTimeDependentModel]{LoessTimeDependentModel}},

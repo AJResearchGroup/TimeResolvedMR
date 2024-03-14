@@ -20,7 +20,7 @@
 #'     \item{H95}{Higher end of 95% CI}
 #'   }
 #' @export
-#' @seealso [calculate_genetic_effects()], [time_dependent_aalen()],
+#' @seealso [analyze_all_in_one()], [time_dependent_aalen()],
 #'   [time_dependent_glm()], [time_dependent_loess()],
 #'   [`GlmTimeDependentModel`][GlmTimeDependentModel()],
 #'   [`LoessTimeDependentModel`][LoessTimeDependentModel()],
@@ -36,9 +36,9 @@
 #' outcome_age <- rnorm(1000, mean=60, sd = 3) |> pmax(40)
 #'
 #' # Estimate exposure and outcome effects
-#' models <- calculate_genetic_effects(pgs, exposure, outcome, exposure_age, outcome_age,
-#'   covariates)
-#' time_dependent_MR(40:70, models$exposure, models$outcome)
+#' exposure_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates)
+#' outcome_model <- time_dependent_aalen(pgs, outcome, outcome_age, covariates)
+#' time_dependent_MR(40:70, exposure_model, outcome_model)
 time_dependent_MR <- function(age_seq, exposure_model, outcome_model,
                               method = c("trapezoidal", "midpoint")) {
   # Checking arguments

@@ -5,3 +5,5 @@
 ^LICENSE\.md$
 ^original_files$
 ^\.github$
+^doc$
+^Meta$

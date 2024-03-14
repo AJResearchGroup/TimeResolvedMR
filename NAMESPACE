@@ -3,7 +3,7 @@
 export(AalenTimeDependentModel)
 export(GlmTimeDependentModel)
 export(LoessTimeDependentModel)
-export(calculate_genetic_effects)
+export(analyze_all_in_one)
 export(exponents)
 export(fixedEffect)
 export(interactionEffects)

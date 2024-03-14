@@ -1,0 +1,222 @@
+---
+title: "TimeResolvedMR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{TimeResolvedMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# TimeResolvedMR
+
+The `TimeResolvedMR` package allows you to estimate time-varying effect of an
+exposure on an outcome using genetic instrumental variables (IVs) through
+Mendelian Randomization (MR). At the moment, this package is tested for
+continuous exposures and binary outcomes.
+
+## Data Preparation
+
+You require the following data for your analysis:
+
+-   Polygenic scores of the exposure for each individual as IV. This is assumed
+    to be correct and no checks will be performed. (`pgs`, numeric vector)
+-   Exposure measurements (`exposure`) and the age at which the exposure was
+    assessed for each individual (`exposure_age`) (both numeric vectors).
+-   Outcome status (`outcome`) and age at which the outcome occurred
+    (`outcome_age`) (both numeric vectors)
+-   Covariates (`covariates`, data.frame)
+
+```{r data}
+# Random example data for 1000 individuals
+pgs <- rnorm(1000)
+exposure <- pgs * 3
+exposure_age <- rep(40:70, length.out = 1000)
+covariates <- data.frame(covar = rnorm(1000))
+outcome <- sample(c(TRUE,FALSE), 1000, replace=TRUE)
+outcome_age <- rnorm(1000, mean=60, sd = 3) |> pmax(40)
+```
+
+## All-in-one Analysis
+
+The package comes with a convenience function performing an all-in-one analysis.
+This allows you to quickly run an MR analysis but you will not be able to reuse
+any of the computed models.
+
+The following code runs the MR analysis with default settings, i.e. the age-pgs
+interaction is estimated using a LOESS model and the genetic effects on the
+outcome using an Aalen model.
+
+```{r all_in_one}
+library(TimeResolvedMR)
+
+all_in_one <- analyze_all_in_one(pgs, exposure, outcome, exposure_age,
+                                 outcome_age, covariates)
+head(all_in_one)
+```
+
+You can change the ages at which to estimated pgs effects for the LOESS model
+using `age_range` and `age_step`.
+Changing the step size might produce erroneous results, however.
+```{r custom1, warning=FALSE}
+all_in_one <- analyze_all_in_one(pgs, exposure, outcome, exposure_age,
+                                 outcome_age, covariates,
+                                 age_range = c(50,70), age_step = 5)
+head(all_in_one)
+```
+
+By setting the `exposure_modeltype` to `"glm"` you can run a generalized linear
+model that includes interaction terms between PGS and age and allows you to
+model non-linear relationship through the `interaction_exponents` parameter.
+
+```{r custom2}
+all_in_one <- analyze_all_in_one(pgs, exposure, outcome, exposure_age,
+                                 outcome_age, covariates,
+                                 exposure_modeltype = "glm",
+                                 interaction_exponents = c(1,4))
+head(all_in_one)
+```
+
+These functions will be discussed in more detail below.
+
+## Running Models Yourself
+
+`TimeResolvedMR` also allows you to estimate time-dependent effects on exposure
+and outcome separately. This way, you can reuse and mix and match models for
+your analyses.
+
+These are the functions and models that come with `TwoSampleMR` including what
+they can be used for:
+
+| Function               | Model | Response Type | Exposure | Outcome |
+|------------------------|-------|---------------|----------|---------|
+| `time_dependent_loess` | LOESS | Continuous    | ✅       | ❌      |
+| `time_dependent_glm`   | GLM   | Continuous    | ✅       | ❌      |
+| `time_dependent_aalen` | Aalen | Binary        | ⚠️       | ✅      |
+
+✅
+= Tested and intended use
+⚠️
+= Usable in theory but not tested
+❌
+= not supported
+
+### LOESS Model
+The LOESS model estimates time-dependent genetic effects by stratifying the
+data by age, estimating the effect using a glm in each stratum and then
+modeling the effect of the age on the genetic effect using a LOESS model.
+
+A basic call looks like this:
+```{r loess1}
+loess_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates)
+```
+The ages at which to estimate the genetic effect are automatically detected.
+They are, by default, each year from the lowest to the highest value in
+`exposure_age`.
+You can change this behavior by specifying `age_range` and `age_step`.
+
+The following code will estimate the effect for every other year between 50 and
+70:
+```{r loess2}
+loess_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates,
+                                    age_range = c(50,70), age_step = 2)
+```
+
+
+### Generalized Linear Model
+The glm implementation estimates time-dependent effects by running a glm
+with PGS-age interaction terms.
+
+```{r glm1}
+glm_model <- time_dependent_glm(pgs, exposure, exposure_age, covariates)
+```
+This will include a single linear interaction term, i.e., `PGS:age`
+
+You can include multiple interaction terms and terms with non-linear
+interactions using the `exponents` parameter.
+
+```{r glm2}
+glm_model <- time_dependent_glm(pgs, exposure, exposure_age, covariates, exponents = c(1,4))
+```
+This model has a linear and a quartic interaction term,
+i.e., `PGS:age + PGS:(age^4)`.
+
+Setting `exponents` to `NULL` or an empty vector will create a model without
+interaction terms.
+This can be useful if you want to compare a time-dependent model to a
+time-constant one.
+
+### Aalen Model
+The Aalen additive hazards model estimates time-dependent effects on a binary
+response.
+
+```{r aalen1}
+aalen_model <- time_dependent_aalen(pgs, outcome, outcome_age, covariates)
+```
+At this point, there are no customization options for this model.
+
+## Performing the Mendelian Randomization
+The MR analysis estimates the effect of the exposure on the outcome depending on
+the duration of the exposure.
+This is done through numeric integration of the time-dependent effects at
+pre-determined points.
+Therefore, you must specify the points at which to estimate the effect.
+```{r}
+mr_results <- time_dependent_MR(age_seq = 0:80, exposure_model = glm_model,
+                                outcome_model = aalen_model)
+head(mr_results)
+```
+By default, the effects are integrated using the trapezoidal rule but you can
+choose to use the midpoint rule instead.
+```{r}
+mr_results <- time_dependent_MR(age_seq = 0:80, exposure_model = glm_model,
+                                outcome_model = aalen_model, method = "midpoint")
+head(mr_results)
+```
+
+This method returns a `data.frame` containing the ages at which the effects were
+estimated, the exposure's cumulative effect on the outcome (`Gamma`), its
+variance and 95% confidence interval at each age.
+Note that the trapezoidal rule estimates the cumulative effect at points halfway
+between the ages specified in `age_seq` whereas the midpoint rule estimates them
+exactly at the ages you specify.
+
+## Adding Models
+`TimeResolvedMR` is designed to be extended.
+If you would like to implement another kind of time-dependent model, you can do
+so by extending the defining an S4 class extending `TimeDependentModel`.
+Requirements of your new class are that it includes a slot called `model`, which
+contains the underlying statistical model (similar to e.g. `glm`) and implements
+the method `totalEffect(this, age)`, which returns the total genetic effect at
+a certain time point (_not_ the cumulative effect up until that point).
+A model that can be used for genetic effects on an outcome also must implement
+`variance(this, age)`, which returns the effect estimate's variance at a
+certain age.
+
+For instance, a class encapsulating a Cox proportional hazards model might look
+like this:
+```{r extension}
+# coxph is an S3 class. Make it visible to the S4 system
+setOldClass("coxph")
+
+CoxTimeDependentModel <- setClass(
+  "CoxTimeDependentModel",
+  contains = "TimeDependentModel",
+  slots = c(
+    model = "coxph"
+    # Additional slots as needed
+  )
+)
+
+setMethod("totalEffect", "CoxTimeDependentModel", function(this, age){
+  # Implementation goes here
+})
+```
+This is just an example skeleton.
+A functional implementation is left as an exercise for the reader.

@@ -14,7 +14,7 @@ last <- function(x) {
 #'
 #' @param x The parameter of the function (usually time). The fractional part
 #'   of the values are assumed to be noise.
-#' @param y The values of the functionh (usually cumulaitve effect)
+#' @param y The values of the function (usually cumulative effect)
 #'
 #' @return A numerically-derived function
 #' @keywords internal

@@ -10,7 +10,7 @@ derive_without_noise(x, y)
 \item{x}{The parameter of the function (usually time). The fractional part
 of the values are assumed to be noise.}
 
-\item{y}{The values of the functionh (usually cumulaitve effect)}
+\item{y}{The values of the function (usually cumulative effect)}
 }
 \value{
 A numerically-derived function

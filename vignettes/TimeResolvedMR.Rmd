@@ -62,8 +62,9 @@ head(all_in_one)
 ```
 
 You can change the ages at which to estimated pgs effects for the LOESS model
-using `age_range` and `age_step`.
-Changing the step size might produce erroneous results, however.
+using `age_range` and `age_step`. Changing the step size might produce erroneous
+results, however.
+
 ```{r custom1, warning=FALSE}
 all_in_one <- analyze_all_in_one(pgs, exposure, outcome, exposure_age,
                                  outcome_age, covariates,
@@ -100,42 +101,43 @@ they can be used for:
 | `time_dependent_glm`   | GLM   | Continuous    | ✅       | ❌      |
 | `time_dependent_aalen` | Aalen | Binary        | ⚠️       | ✅      |
 
-✅
-= Tested and intended use
-⚠️
-= Usable in theory but not tested
-❌
-= not supported
+✅ = Tested and intended use ⚠️ = Usable in theory but not tested ❌ = not
+supported
 
 ### LOESS Model
-The LOESS model estimates time-dependent genetic effects by stratifying the
-data by age, estimating the effect using a glm in each stratum and then
-modeling the effect of the age on the genetic effect using a LOESS model.
+
+The LOESS model estimates time-dependent genetic effects by stratifying the data
+by age, estimating the effect using a glm in each stratum and then modeling the
+effect of the age on the genetic effect using a LOESS model.
 
 A basic call looks like this:
+
 ```{r loess1}
 loess_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates)
 ```
+
 The ages at which to estimate the genetic effect are automatically detected.
 They are, by default, each year from the lowest to the highest value in
-`exposure_age`.
-You can change this behavior by specifying `age_range` and `age_step`.
+`exposure_age`. You can change this behavior by specifying `age_range` and
+`age_step`.
 
 The following code will estimate the effect for every other year between 50 and
 70:
+
 ```{r loess2}
 loess_model <- time_dependent_loess(pgs, exposure, exposure_age, covariates,
                                     age_range = c(50,70), age_step = 2)
 ```
 
-
 ### Generalized Linear Model
-The glm implementation estimates time-dependent effects by running a glm
-with PGS-age interaction terms.
+
+The glm implementation estimates time-dependent effects by running a glm with
+PGS-age interaction terms.
 
 ```{r glm1}
 glm_model <- time_dependent_glm(pgs, exposure, exposure_age, covariates)
 ```
+
 This will include a single linear interaction term, i.e., `PGS:age`
 
 You can include multiple interaction terms and terms with non-linear
@@ -144,36 +146,41 @@ interactions using the `exponents` parameter.
 ```{r glm2}
 glm_model <- time_dependent_glm(pgs, exposure, exposure_age, covariates, exponents = c(1,4))
 ```
-This model has a linear and a quartic interaction term,
-i.e., `PGS:age + PGS:(age^4)`.
+
+This model has a linear and a quartic interaction term, i.e.,
+`PGS:age + PGS:(age^4)`.
 
 Setting `exponents` to `NULL` or an empty vector will create a model without
-interaction terms.
-This can be useful if you want to compare a time-dependent model to a
-time-constant one.
+interaction terms. This can be useful if you want to compare a time-dependent
+model to a time-constant one.
 
 ### Aalen Model
+
 The Aalen additive hazards model estimates time-dependent effects on a binary
 response.
 
 ```{r aalen1}
 aalen_model <- time_dependent_aalen(pgs, outcome, outcome_age, covariates)
 ```
+
 At this point, there are no customization options for this model.
 
 ## Performing the Mendelian Randomization
+
 The MR analysis estimates the effect of the exposure on the outcome depending on
-the duration of the exposure.
-This is done through numeric integration of the time-dependent effects at
-pre-determined points.
-Therefore, you must specify the points at which to estimate the effect.
+the duration of the exposure. This is done through numeric integration of the
+time-dependent effects at pre-determined points. Therefore, you must specify the
+points at which to estimate the effect.
+
 ```{r}
 mr_results <- time_dependent_MR(age_seq = 0:80, exposure_model = glm_model,
                                 outcome_model = aalen_model)
 head(mr_results)
 ```
+
 By default, the effects are integrated using the trapezoidal rule but you can
 choose to use the midpoint rule instead.
+
 ```{r}
 mr_results <- time_dependent_MR(age_seq = 0:80, exposure_model = glm_model,
                                 outcome_model = aalen_model, method = "midpoint")
@@ -182,25 +189,32 @@ head(mr_results)
 
 This method returns a `data.frame` containing the ages at which the effects were
 estimated, the exposure's cumulative effect on the outcome (`Gamma`), its
-variance and 95% confidence interval at each age.
-Note that the trapezoidal rule estimates the cumulative effect at points halfway
-between the ages specified in `age_seq` whereas the midpoint rule estimates them
-exactly at the ages you specify.
+variance and 95% confidence interval at each age. Note that the trapezoidal rule
+estimates the cumulative effect at points halfway between the ages specified in
+`age_seq` whereas the midpoint rule estimates them exactly at the ages you
+specify.
 
 ## Adding Models
-`TimeResolvedMR` is designed to be extended.
-If you would like to implement another kind of time-dependent model, you can do
-so by extending the defining an S4 class extending `TimeDependentModel`.
-Requirements of your new class are that it includes a slot called `model`, which
-contains the underlying statistical model (similar to e.g. `glm`) and implements
-the method `totalEffect(this, age)`, which returns the total genetic effect at
-a certain time point (_not_ the cumulative effect up until that point).
+
+`TimeResolvedMR` is designed to be extended. If you would like to implement
+another kind of time-dependent model, you can do so by defining an S4 class
+extending `TimeDependentModel`.
+
+Your new class must
+
+1.  include a slot called `model`, which contains the underlying statistical
+    model (similar to e.g. `glm`),
+2.  implement the method `totalEffect(this, age)`, which returns the total
+    genetic effect at a certain time point (*not* the cumulative effect up until
+    that point).
+
 A model that can be used for genetic effects on an outcome also must implement
-`variance(this, age)`, which returns the effect estimate's variance at a
-certain age.
+`variance(this, age)`, which returns the effect estimate's variance at a certain
+age.
 
 For instance, a class encapsulating a Cox proportional hazards model might look
 like this:
+
 ```{r extension}
 # coxph is an S3 class. Make it visible to the S4 system
 setOldClass("coxph")
@@ -218,5 +232,6 @@ setMethod("totalEffect", "CoxTimeDependentModel", function(this, age){
   # Implementation goes here
 })
 ```
-This is just an example skeleton.
-A functional implementation is left as an exercise for the reader.
+
+This is just an example skeleton. A functional implementation is left as an
+exercise for the reader.

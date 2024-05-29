@@ -2,7 +2,7 @@
 # TimeResolvedMR
 
 <!-- badges: start -->
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/AJResearchGroup/TimeResolvedMR/r.yml)
+[![R-CMD-check](https://github.com/AJResearchGroup/TimeResolvedMR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/AJResearchGroup/TimeResolvedMR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Estimate time-varying effects of an exposure on an outcome using genetic
